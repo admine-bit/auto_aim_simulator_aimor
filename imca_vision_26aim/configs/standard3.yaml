@@ -1,0 +1,165 @@
+# 1. 基础配置：敌方颜色
+# enemy_color: "blue"
+enemy_color: "red"
+
+
+# 2. 神经网络参数（打符模型路径适配 yolo11_buff.cpp）
+#####-----神经网络参数-----#####
+yolo_name: yolov5
+classify_model: assets/tiny_resnet.onnx
+yolo11_model_path: assets/yolo11.xml
+yolov8_model_path: assets/yolov8.xml
+yolov5_model_path: assets/yolov5.xml
+yolov5_engine_path: model/yolov5_orin_fp16.engine
+yolov8_engine_path: model/yolov8.engine
+yolo11_engine_path: model/yolo11.engine
+classify_engine_path: model/tiny_resnet.engine
+# 打符模型路径（需确保 .xml 和 .bin 同名同目录）
+model: "assets/yolo11_buff_int8.xml"
+yolo11_buff_engine_path: model/yolo11_buff.engine
+device: CPU  # 推理设备（CPU无需额外驱动，GPU需装OpenVINO GPU组件）
+min_confidence: 0.7 # 过滤低置信检测结果
+use_traditional: true  # 启用传统图像处理辅助检测
+
+
+# 3. ROI配置（打符禁用ROI，避免裁剪目标）
+#####-----ROI-----#####
+roi: 
+  x: 420
+  y: 50
+  width: 600
+  height: 600
+use_roi: false
+
+
+#####-----USB相机参数（备用）-----#####
+image_width: 1440
+image_height: 1080
+fov_h: 57.7
+fov_v: 56.7 
+new_fov_h: 27
+new_fov_v: 40.9
+usb_frame_rate: 120
+usb_exposure: 500  # 单位：us，建议500-1000
+usb_gamma: 160
+usb_gain: 10  # 0-96，避免过高产生噪点
+
+#####-----工业相机参数（海康 MV-CS016-10UC）-----#####
+camera_name: "hikrobot"  # 相机型号标识，不可改
+exposure_ms: 1.6  # 曝光时间（ms），打符建议0.5-1.2（防运动模糊
+gain: 14.5  # 增益（dB），10-20为宜
+vid_pid: "2bdf:0001"  # 海康相机默认USB设备ID
+
+
+# 5. 传统方法参数（自瞄装甲板检测，不影响打符）
+#####-----传统方法参数-----#####
+threshold: 150
+max_angle_error: 45  # degree
+min_lightbar_ratio: 1.5
+max_lightbar_ratio: 20
+min_lightbar_length: 8
+min_armor_ratio: 1
+max_armor_ratio: 5
+max_side_ratio: 1.5
+max_rectangular_error: 25  # degree
+
+# max_yaw_acc: 10
+# Q_yaw: [5e6, 1e3]
+# R_yaw: [5.0]
+
+max_yaw_acc:  22
+Q_yaw: [6e6, 1e3]
+R_yaw: [1.5]
+
+max_pitch_acc: 40      
+Q_pitch: [7e6,0]    
+R_pitch: [1.0]
+#####-----gimbal参数（串口通信备用）-----#####
+# com_port: "/dev/gimbal"   # 固定串口名（需通过udev规则配置）
+com_port: "/dev/ttyACM0"
+
+#####-----shoot-----#####
+fire_thresh: 0.006 #0.0035
+fire_dis: 0.06 # 位置误差阈值
+fire_hold_time: 0.055  # s，短开火脉冲补齐时间
+buff_fire_dis: 0.08
+
+#####-----tracker参数-----#####
+min_detect_count: 5
+max_temp_lost_count: 25
+outpost_max_temp_lost_count: 35
+
+#####-----aimer参数（自瞄偏移补偿）-----#####
+yaw_offset: 0.4  # degree 向左为正 
+pitch_offset: 0.6 # degree 向上为正
+comming_angle: 60  # degree
+leaving_angle: 20  # degree
+# left_yaw_offset: -1
+# right_yaw_offset: -0.6
+decision_speed: 8  # rad/s
+high_speed_delay_time: 0.015  # s
+low_speed_delay_time: 0.015  # s
+
+
+# 9. 自瞄开火参数（不影响打符）
+#####-----shooter参数-----#####
+first_tolerance: 3  # 近距离射击容差，degree
+second_tolerance: 2  # 远距离射击容差，degree
+judge_distance: 3  # 距离判断阈值
+auto_fire: true  # 自瞄控制射击
+
+# 10. 打符 
+#####-----buff_aimer参数-----#####
+buff_yaw_offset: 0.15 # degree，在 aimer 的 yaw_offset 基础上叠加
+buff_pitch_offset: 0.5 #degree，在 aimer 的 pitch_offset 基础上叠加
+fire_gap_time: 0.6    # 连续开火间隔（s）   0.080 
+predict_time: 0.10     # 目标运动预测提前量（s）0.150
+barrel_delay: 0.1    # 大符双目标：第一发开火后等待时间(s)，防止子弹未出膛就切换
+rune_idle_duration: 0.4  # RMCS 风格能量机关空闲窗口（s）
+rune_shoot_duration: 0.2  # RMCS 风格能量机关开火窗口（s）
+buff_use_rmcs_fire_cycle: true  # 使用 idle/shoot 周期替代固定 fire_gap_time
+buff_yolo_confidence_threshold: 0.50  # YOLO Buff 目标框置信度阈值
+buff_yolo_keypoint_threshold: 0.50    # kpt0~3、kpt5 关键点置信度阈值
+buff_yolo_nms_iou_threshold: 0.40     # 相同目标候选框 NMS IoU 阈值
+buff_loss_max_frames: 20               # 整帧无有效目标时，保留历史目标的最大帧数
+buff_secondary_hold_max_frames: 20     # 副目标漏检时，继续使用推断副槽的最大帧数
+
+# 大符双目标自动切换：true=第一发后自动切副目标；false=关闭自动切换（仅影响 Aimer）
+buff_auto_secondary_switch: true
+
+#####-----buff pose/filter 参数（键缺失时代码使用同名默认值）-----#####
+buff_pnp_max_rmse_px: 4.0            # 五点 PnP 最大重投影 RMSE，超限且 kpt5 异常时回退四角
+buff_max_plane_pitch_deg: 20.0       # 镜像消歧：符竖直⇒真解符面 pitch≈0，候选超此值不采信
+buff_pitch_separation_deg: 8.0       # 两支候选 pitch 至少拉开这么多，pitch 先验才生效
+buff_r_measurement_std_m: 0.05       # PnP R 中心测量标准差
+buff_r_process_std_m_sqrt_s: 0.08    # R 随机游走强度（移动平台可调大至 0.15）
+buff_r_innovation_gate_m: 0.30       # 7m 处的 R 创新门限，实际按距离缩放
+buff_r_relocate_min_streak: 3        # 重定位要求连续一致的大创新帧数
+buff_r_relocate_min_updates: 30      # 收敛前禁用重定位，防止坏初始化被锁死
+buff_phase_innovation_gate_deg: 25.0 # 相位创新门限，必须小于半槽 36°
+buff_unwrap_max_dt_s: 0.6            # 解卷绕可信的最大观测间隔，超过则清空拟合历史
+buff_fit_window_s: 4.0               # 大符正弦拟合窗口（周期 3.14~3.33s）
+buff_fit_min_span_s: 1.5             # 样本跨度不足时不开拟（0.33s 数据拟 3.2s 周期不可辨识）
+buff_dual_roll_tolerance_deg: 12.0   # 同帧主副 roll 差偏离 72° 整数倍超此值则丢弃副片观测
+buff_full_reset_s: 3.0               # 连续完全丢失超过该时间才整体重置共享滤波器（规则换组黑屏≤0.2s）
+
+# 11. 相机标定参数（打符坐标转换必需）
+#####-----工业相机标定参数-----#####
+R_gimbal2imubody: [0, 1, 0,
+                    -1, 0, 0,
+                    0, 0, 1]  # 云台→IMU旋转矩阵
+
+# 重投影误差: 0.0474px
+camera_matrix: [1854.0432336165313, 0, 719.37368541404771, 0, 1861.6438335199068, 539.63847956895006, 0, 0, 1]
+distort_coeffs: [-0.053318490072788056, 0.12243709644647328, -0.00082790539777392749, 0.0018082902852639348, 0]
+
+# 相机同理想情况的偏角: yaw-0.97 pitch0.48 roll178.55 degree
+# 标定板到世界坐标系原点的水平距离: 1.26 m
+# 标定板同竖直摆放时的偏角: yaw-37.60 pitch1.04 roll-1.39 degree
+R_camera2gimbal: [-0.016674557024822633, -0.0088890170728965056, 0.99982145632282948, 0.99953499340541119, 0.025383862529954448, 0.016895457410342644, -0.025529514411172627, 0.9996382570202772, 0.0084616189580721986]
+t_camera2gimbal: [0.15410180318944805, 0.051175419633965234, -0.057805924631733709]
+
+
+# 12. 自瞄决策模式（不影响打符）
+#####-----decider参数-----#####
+mode: 1

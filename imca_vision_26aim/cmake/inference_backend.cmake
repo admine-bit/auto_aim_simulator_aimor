@@ -1,0 +1,4 @@
+# 修改这一行后仍然使用原来的 cmake .. 和 make 命令。
+# 可选：OPENVINO 或 TENSORRT。
+set(IMCA_INFERENCE_BACKEND "OPENVINO")
+# set(IMCA_INFERENCE_BACKEND "TENSORRT")

@@ -1,0 +1,21 @@
+# Build outputs
+build/
+cmake-build-*/
+
+# Runtime logs
+log/
+logs/
+assets/demo/
+# IDE / OS
+.vscode/
+.idea/
+
+# Python cache
+__pycache__/
+
+# Binary artifacts
+*.avi
+assets/img_with_q/
+records/
+
+.claude/

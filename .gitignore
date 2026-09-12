@@ -1,0 +1,14 @@
+.git_backup/
+**/.git_backup/
+
+# Intel installation packages
+imca_vision_26aim/neo/
+
+# Recorded videos
+imca_vision_26aim/records/
+
+# Rust build output
+bevy_robomaster_simulator/target/
+
+# Backups of original nested repositories
+**/.git_backup/

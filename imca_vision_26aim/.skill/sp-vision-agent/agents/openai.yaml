@@ -1,0 +1,4 @@
+interface:
+  display_name: "SP Vision 25 工程助手"
+  short_description: "用于 SP Vision 25 工程维护、排障与最小化代码修改"
+  default_prompt: "使用 $sp-vision-agent 在 sp_vision_25 仓库中完成一次最小、可验证的工程修改。"
