@@ -3,7 +3,7 @@ use bevy::prelude::*;
 use crossbeam_channel::{Receiver, Sender, unbounded};
 use notify::{Event, RecommendedWatcher, RecursiveMode, Watcher};
 use serde::Deserialize;
-use std::path::Path;
+use std::path::{Component, Path};
 
 #[derive(Resource, Deserialize, Reflect, Clone)]
 #[reflect(Resource)]
@@ -16,6 +16,8 @@ pub struct SimulationConfig {
     pub preview: PreviewConfig,
     #[serde(default)]
     pub render: RenderConfig,
+    #[serde(default)]
+    pub scene: SceneConfig,
     #[serde(default)]
     pub capture: CapturePipelineConfig,
     #[serde(default)]
@@ -95,6 +97,106 @@ impl Default for RenderConfig {
             metalfx_frame_generation: false,
             metalfx_scale: 2.0,
         }
+    }
+}
+
+#[derive(Deserialize, Reflect, Clone, Debug, Default, PartialEq)]
+#[serde(default)]
+pub struct SceneConfig {
+    pub models: Vec<SceneModelConfig>,
+}
+
+#[derive(Deserialize, Reflect, Clone, Debug, PartialEq)]
+#[serde(default)]
+pub struct SceneModelConfig {
+    /// Asset path relative to the simulator's `assets/` directory.
+    pub path: String,
+    pub enabled: bool,
+    /// glTF scene index. Blender's ordinary single-scene export uses 0.
+    pub scene_index: usize,
+    /// World-space translation in metres.
+    pub position: [f32; 3],
+    /// XYZ Euler rotation in degrees.
+    #[serde(alias = "rotation_degrees")]
+    pub rotation: [f32; 3],
+    /// Uniform model scale.
+    pub scale: f32,
+    /// Generate static triangle-mesh colliders from this model.
+    pub collision: bool,
+    /// Empty means the whole model hierarchy. Otherwise, only exact named nodes are collidable.
+    pub collision_nodes: Vec<String>,
+}
+
+impl Default for SceneModelConfig {
+    fn default() -> Self {
+        Self {
+            path: String::new(),
+            enabled: true,
+            scene_index: 0,
+            position: [0.0; 3],
+            rotation: [0.0; 3],
+            scale: 1.0,
+            collision: false,
+            collision_nodes: Vec::new(),
+        }
+    }
+}
+
+impl SceneModelConfig {
+    pub fn validate(&self) -> Result<(), String> {
+        let path = self.path.trim();
+        if path.is_empty() {
+            return Err("path cannot be empty".to_string());
+        }
+
+        let asset_path = Path::new(path);
+        if asset_path.is_absolute()
+            || asset_path.components().any(|component| {
+                matches!(
+                    component,
+                    Component::ParentDir | Component::RootDir | Component::Prefix(_)
+                )
+            })
+        {
+            return Err("path must stay inside the assets directory".to_string());
+        }
+
+        let extension = asset_path
+            .extension()
+            .and_then(|extension| extension.to_str())
+            .unwrap_or_default();
+        if !extension.eq_ignore_ascii_case("glb") && !extension.eq_ignore_ascii_case("gltf") {
+            return Err("path must point to a .glb or .gltf asset".to_string());
+        }
+
+        if !self.scale.is_finite() || self.scale <= 0.0 {
+            return Err("scale must be a finite value greater than zero".to_string());
+        }
+        if self
+            .position
+            .iter()
+            .chain(self.rotation.iter())
+            .any(|value| !value.is_finite())
+        {
+            return Err("position and rotation values must be finite".to_string());
+        }
+        if self
+            .collision_nodes
+            .iter()
+            .any(|name| name.trim().is_empty())
+        {
+            return Err("collision_nodes cannot contain an empty node name".to_string());
+        }
+
+        Ok(())
+    }
+
+    pub fn transform(&self) -> Transform {
+        let [x, y, z] = self.position;
+        let [rx, ry, rz] = self.rotation.map(f32::to_radians);
+        Transform::from_xyz(x, y, z)
+            .with_rotation(Quat::from_euler(EulerRot::XYZ, rx, ry, rz))
+            .with_scale(Vec3::splat(self.scale))
     }
 }
 
@@ -356,6 +458,7 @@ impl Default for SimulationConfig {
                 debug: DebugConfig::default(),
                 preview: PreviewConfig::default(),
                 render: RenderConfig::default(),
+                scene: SceneConfig::default(),
                 capture: CapturePipelineConfig::default(),
                 livox_ros: LivoxRosConfig::default(),
                 physics: PhysicsConfig::default(),
@@ -448,6 +551,9 @@ fn config_hot_reload(
             match SimulationConfig::load() {
                 Ok(new_config) => {
                     info!("Config reloaded successfully");
+                    if config.scene != new_config.scene {
+                        warn!("Scene model changes take effect after restarting the simulator");
+                    }
                     if let Some(substeps) = substeps.as_deref_mut() {
                         substeps.0 = new_config.physics.substep_count;
                     }
@@ -461,5 +567,72 @@ fn config_hot_reload(
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[derive(Deserialize)]
+    struct SceneOnlyConfig {
+        #[serde(default)]
+        scene: SceneConfig,
+    }
+
+    #[test]
+    fn scene_models_default_to_empty() {
+        let config: SceneOnlyConfig = toml::from_str("").unwrap();
+        assert!(config.scene.models.is_empty());
+    }
+
+    #[test]
+    fn checked_in_config_parses() {
+        SimulationConfig::load().unwrap();
+    }
+
+    #[test]
+    fn custom_scene_model_parses_and_builds_transform() {
+        let config: SceneOnlyConfig = toml::from_str(
+            r#"
+                [scene]
+                [[scene.models]]
+                path = "custom/obstacle.glb"
+                scene_index = 2
+                position = [1.0, 2.0, 3.0]
+                rotation = [0.0, 90.0, 0.0]
+                scale = 1.5
+                collision = true
+                collision_nodes = ["COLLIDER"]
+            "#,
+        )
+        .unwrap();
+
+        let model = &config.scene.models[0];
+        assert!(model.enabled);
+        assert_eq!(model.scene_index, 2);
+        assert_eq!(model.collision_nodes, ["COLLIDER"]);
+        assert!(model.validate().is_ok());
+
+        let transform = model.transform();
+        assert_eq!(transform.translation, Vec3::new(1.0, 2.0, 3.0));
+        assert_eq!(transform.scale, Vec3::splat(1.5));
+        assert!((transform.rotation * Vec3::X - Vec3::NEG_Z).length() < 1e-5);
+    }
+
+    #[test]
+    fn custom_scene_model_rejects_unsafe_or_invalid_values() {
+        let mut model = SceneModelConfig {
+            path: "../outside.glb".to_string(),
+            ..default()
+        };
+        assert!(model.validate().is_err());
+
+        model.path = "inside/model.obj".to_string();
+        assert!(model.validate().is_err());
+
+        model.path = "inside/model.glb".to_string();
+        model.scale = 0.0;
+        assert!(model.validate().is_err());
     }
 }

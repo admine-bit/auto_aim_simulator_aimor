@@ -35,10 +35,11 @@ use crate::setup::setup;
 use crate::statistic::ProjectileStatistics;
 use crate::systems::{
     ChassisObservationFrame, ControllerState, GameplaySystems, PreviousKinematicState,
-    change_appearance, cleanup_projectiles, clear_controller_input, controller_dart_just_pressed,
-    controller_shoot_pressed, dart_launch, following_controls, freecam_controls, gimbal_controls,
-    gimbal_pid_controls, projectile_aerodynamics, projectile_launch, remote_gimbal_controls,
-    remote_vehicle_controls, sample_gamepad_controller, sample_keyboard_controller,
+    capture_cursor_on_startup, change_appearance, cleanup_projectiles, clear_controller_input,
+    controller_dart_just_pressed, controller_shoot_pressed, cursor_capture_controls, dart_launch,
+    following_controls, freecam_controls, gimbal_controls, gimbal_pid_controls,
+    projectile_aerodynamics, projectile_launch, remote_gimbal_controls, remote_vehicle_controls,
+    sample_gamepad_controller, sample_keyboard_controller, sample_mouse_controller,
     screenshot_on_f2, screenshot_saving, setup_projectile, switch_slapper_control, uav_launch,
     update_auto_aim_subscription, update_chassis_observation, update_help_text, vehicle_controls,
 };
@@ -155,7 +156,10 @@ fn main() {
             config.projectile.cooldown,
             TimerMode::Once,
         )))
-        .add_systems(Startup, (setup, setup_projectile))
+        .add_systems(
+            Startup,
+            (setup, setup_projectile, capture_cursor_on_startup),
+        )
         .add_observer(on_hit)
         .add_observer(on_activate)
         .configure_sets(
@@ -174,7 +178,9 @@ fn main() {
                 // Input phase
                 (
                     clear_controller_input,
+                    cursor_capture_controls,
                     sample_keyboard_controller,
+                    sample_mouse_controller,
                     sample_gamepad_controller,
                     update_auto_aim_subscription,
                     following_controls,

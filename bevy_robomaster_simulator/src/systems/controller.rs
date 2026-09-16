@@ -1,9 +1,12 @@
 use bevy::input::gamepad::{GamepadRumbleIntensity, GamepadRumbleRequest};
+use bevy::input::mouse::MouseMotion;
 use bevy::prelude::*;
+use bevy::window::{CursorGrabMode, CursorOptions};
 use core::time::Duration;
 use std::sync::atomic::Ordering;
 
-use crate::components::SubscribeAutoAim;
+use crate::components::{CameraMode, FollowingType, SubscribeAutoAim};
+use crate::config::SimulationConfig;
 
 const GAMEPAD_STICK_DEADZONE: f32 = 0.12;
 const GAMEPAD_TRIGGER_THRESHOLD: f32 = 0.35;
@@ -19,9 +22,9 @@ pub struct ControllerHelp {
 impl ControllerHelp {
     const fn keyboard() -> Self {
         Self {
-            source: "keyboard",
-            manual: "F3 Camera | WASD Move | Arrows Aim | Space Shoot | G Dart | Q Gyro | U Remote Gyro | F5 AutoAim | Tab Slapper",
-            auto_aim: "F5 AutoAim Off | WASD Move | Q Gyro | U Remote Gyro | external fire_advice shoots | Tab Slapper",
+            source: "keyboard+mouse",
+            manual: "Mouse Aim | LMB Shoot | hold RMB AutoAim | WASD Move | F3 Camera | Q Gyro | F5 Toggle AutoAim | Tab Slapper",
+            auto_aim: "Mouse Manual Override | LMB Shoot | RMB Hold / F5 Toggle AutoAim | WASD Move | Q Gyro | Tab Slapper",
         }
     }
 
@@ -29,7 +32,7 @@ impl ControllerHelp {
         Self {
             source: "xbox",
             manual: "View Camera | LS Move | L3 Boost | DPad Slapper Move | RS Aim | R3+RS Slapper Roll/Pitch | LB Gyro | Y Slapper Gyro | RB Shoot | X Dart | hold RT AutoAim",
-            auto_aim: "release RT AutoAim Off | LS Move | L3 Boost | DPad Slapper Move | R3+RS Slapper Roll/Pitch | LB Gyro | Y Slapper Gyro | external fire_advice shoots",
+            auto_aim: "RS Manual Override | release RT AutoAim Off | LS Move | DPad Slapper Move | R3+RS Slapper Roll/Pitch | LB Gyro | Y Slapper Gyro",
         }
     }
 }
@@ -71,6 +74,8 @@ impl ChassisSpinMode {
 pub struct ControllerInput {
     pub movement: Vec2,
     pub gimbal: Vec2,
+    /// Direct angular displacement accumulated from relative mouse motion this frame.
+    pub gimbal_delta: Vec2,
     pub chassis_yaw: f32,
     pub chassis_roll: f32,
     pub chassis_pitch: f32,
@@ -88,6 +93,7 @@ impl Default for ControllerInput {
         Self {
             movement: Vec2::ZERO,
             gimbal: Vec2::ZERO,
+            gimbal_delta: Vec2::ZERO,
             chassis_yaw: 0.0,
             chassis_roll: 0.0,
             chassis_pitch: 0.0,
@@ -115,12 +121,20 @@ impl ControllerInput {
         }
     }
 
+    pub fn has_gimbal_input(self) -> bool {
+        self.gimbal != Vec2::ZERO || self.gimbal_delta != Vec2::ZERO
+    }
+
     fn add_movement(&mut self, movement: Vec2) {
         self.movement = clamp_axes_vec2(self.movement + movement);
     }
 
     fn add_gimbal(&mut self, gimbal: Vec2) {
         self.gimbal = clamp_axes_vec2(self.gimbal + gimbal);
+    }
+
+    fn add_gimbal_delta(&mut self, delta: Vec2) {
+        self.gimbal_delta += delta;
     }
 
     fn add_chassis(&mut self, yaw: f32, roll: f32, pitch: f32) {
@@ -277,6 +291,35 @@ pub fn sample_keyboard_controller(
     if keyboard.just_pressed(KeyCode::F5) {
         controller.toggle_keyboard_auto_aim();
     }
+}
+
+pub fn sample_mouse_controller(
+    mut mouse_motion_events: MessageReader<MouseMotion>,
+    mouse_buttons: Res<ButtonInput<MouseButton>>,
+    cursor_options: Single<&CursorOptions>,
+    mode: Res<CameraMode>,
+    config: Res<SimulationConfig>,
+    mut controller: ResMut<ControllerState>,
+) {
+    let mouse_delta = mouse_motion_events
+        .read()
+        .fold(Vec2::ZERO, |total, event| total + event.delta);
+    let mouse_used = mouse_delta != Vec2::ZERO
+        || mouse_buttons.pressed(MouseButton::Left)
+        || mouse_buttons.pressed(MouseButton::Right);
+    if mouse_used {
+        controller.use_help(ControllerHelp::keyboard());
+        controller.clear_gamepad();
+    }
+
+    apply_mouse_input(
+        &mut controller.controlled,
+        mouse_delta,
+        config.camera.mouse_sensitivity,
+        mode.0 != FollowingType::Free && cursor_options.grab_mode != CursorGrabMode::None,
+        mouse_buttons.pressed(MouseButton::Left),
+        mouse_buttons.pressed(MouseButton::Right),
+    );
 }
 
 pub fn sample_gamepad_controller(
@@ -505,6 +548,25 @@ fn clamp_axes_vec2(input: Vec2) -> Vec2 {
     Vec2::new(input.x.clamp(-1.0, 1.0), input.y.clamp(-1.0, 1.0))
 }
 
+fn mouse_gimbal_delta(mouse_delta: Vec2, sensitivity: f32) -> Vec2 {
+    -mouse_delta * sensitivity
+}
+
+fn apply_mouse_input(
+    controlled: &mut ControllerInput,
+    mouse_delta: Vec2,
+    sensitivity: f32,
+    controls_gimbal: bool,
+    shoot: bool,
+    auto_aim: bool,
+) {
+    controlled.shoot |= shoot;
+    controlled.auto_aim |= auto_aim;
+    if controls_gimbal {
+        controlled.add_gimbal_delta(mouse_gimbal_delta(mouse_delta, sensitivity));
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -530,6 +592,54 @@ mod tests {
 
         input.add_movement(Vec2::ONE);
         assert_eq!(input.movement, Vec2::ONE);
+    }
+
+    #[test]
+    fn mouse_motion_maps_to_gimbal_angles_with_expected_signs() {
+        assert_eq!(
+            mouse_gimbal_delta(Vec2::new(4.0, -2.0), 0.003),
+            Vec2::new(-0.012, 0.006)
+        );
+    }
+
+    #[test]
+    fn direct_mouse_motion_counts_as_manual_gimbal_input() {
+        let mut input = ControllerInput::default();
+        assert!(!input.has_gimbal_input());
+
+        input.add_gimbal_delta(Vec2::new(0.01, 0.0));
+        assert!(input.has_gimbal_input());
+    }
+
+    #[test]
+    fn mouse_buttons_bind_shoot_and_hold_to_auto_aim() {
+        let mut input = ControllerInput::default();
+
+        apply_mouse_input(&mut input, Vec2::new(2.0, -1.0), 0.01, true, true, true);
+
+        assert!(input.shoot);
+        assert!(input.auto_aim);
+        assert_eq!(input.gimbal_delta, Vec2::new(-0.02, 0.01));
+    }
+
+    #[test]
+    fn released_cursor_does_not_move_gimbal_but_buttons_still_work() {
+        let mut input = ControllerInput::default();
+
+        apply_mouse_input(&mut input, Vec2::ONE, 0.01, false, true, true);
+
+        assert_eq!(input.gimbal_delta, Vec2::ZERO);
+        assert!(input.shoot);
+        assert!(input.auto_aim);
+    }
+
+    #[test]
+    fn keyboard_mouse_help_documents_primary_mouse_controls() {
+        let help = ControllerHelp::keyboard();
+        assert!(help.manual.contains("Mouse Aim"));
+        assert!(help.manual.contains("LMB Shoot"));
+        assert!(help.manual.contains("hold RMB AutoAim"));
+        assert!(help.auto_aim.contains("Mouse Manual Override"));
     }
 
     #[test]

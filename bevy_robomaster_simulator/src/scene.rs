@@ -14,10 +14,12 @@ use avian3d::prelude::*;
 use bevy::prelude::*;
 use bevy::world_serialization::{InstanceId, WorldAssetRoot, WorldInstance};
 use std::collections::HashMap;
+use std::path::Path;
 
 use crate::components::{
     ActiveSlapper, Controlled, GameLayer, GroundRoot, Infantry, PreciousCollision, SlapperInfantry,
 };
+use crate::config::SimulationConfig;
 use crate::robomaster::power_rune::construct::setup_power_rune;
 use crate::robomaster::prelude::{
     HERO_ROBOT_CONFIG, INFANTRY_THREE_CONFIG, PowerRuneRoot, Team, TechCoreRoot,
@@ -36,7 +38,7 @@ use crate::util::async_world::{AsyncWorld, AsyncWorldTask, drive_async_world};
 /// selected rather than awaited forever.
 async fn colliders_ready(w: &AsyncWorld, root: Entity) {
     w.observe_all::<ColliderConstructorHierarchyReady, _>(move |world| {
-        let mut queued = Vec::new();
+        let mut queued = vec![root];
         collect_descendants(world, root, &mut queued);
         queued.retain(|entity| world.get::<ColliderConstructorHierarchy>(*entity).is_some());
         queued
@@ -173,6 +175,70 @@ async fn load_scene(w: AsyncWorld) {
     )
     .await;
     colliders_ready(&w, power_rune).await;
+
+    // User-configured static scene models are loaded before robots so their colliders are ready
+    // before any dynamic body enters the world.
+    let custom_models = w
+        .with_world(|world| world.resource::<SimulationConfig>().scene.models.clone())
+        .await;
+    for model in custom_models {
+        if !model.enabled {
+            continue;
+        }
+        if let Err(reason) = model.validate() {
+            warn!("Skipping custom scene model {:?}: {reason}", model.path);
+            continue;
+        }
+
+        let path = model.path.trim().to_string();
+        if !Path::new("assets").join(&path).is_file() {
+            warn!(
+                "Skipping custom scene model {path:?}: file was not found below the assets directory"
+            );
+            continue;
+        }
+
+        let root = w
+            .spawn(
+                WorldAssetRoot(
+                    assets.load(GltfAssetLabel::Scene(model.scene_index).from_asset(path.clone())),
+                ),
+                model.transform(),
+            )
+            .await;
+
+        if model.collision {
+            if model.collision_nodes.is_empty() {
+                let collider = trimesh();
+                w.with_world(move |world| {
+                    world.entity_mut(root).insert((RigidBody::Static, collider));
+                })
+                .await;
+            } else {
+                let collision_map = model
+                    .collision_nodes
+                    .iter()
+                    .map(|name| (name.clone(), static_trimesh()))
+                    .collect::<HashMap<_, _>>();
+                let configured_count = collision_map.len();
+                let matched_count = w
+                    .run(setup_collision, (root, PreciousCollision(collision_map)))
+                    .await;
+                if matched_count != configured_count {
+                    warn!(
+                        "Custom scene model {path:?} matched {matched_count}/{configured_count} collision nodes; configured names: {:?}",
+                        model.collision_nodes
+                    );
+                }
+            }
+            colliders_ready(&w, root).await;
+        }
+
+        info!(
+            "Loaded custom scene model {path:?} (scene {}, collision: {})",
+            model.scene_index, model.collision
+        );
+    }
 
     // Robots last, so they can never become dynamic over an empty world.
     let player = w

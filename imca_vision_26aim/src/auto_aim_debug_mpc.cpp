@@ -89,9 +89,9 @@ int main(int argc, char * argv[])
       auto plan = planner.plan(target, gs.bullet_speed); // 调用规划器计算规划结果（传入目标和子弹速度）
       const float current_min_dist = min_dist.load();
 
-      plan.pitch = - plan.pitch;
-      plan.pitch_vel = - plan.pitch_vel;
-      plan.pitch_acc = - plan.pitch_acc;
+      // plan.pitch = - plan.pitch;
+      // plan.pitch_vel = - plan.pitch_vel;
+      // plan.pitch_acc = - plan.pitch_acc;
       
       // 没有目标时不允许旧目标的开火逻辑重新打开开火指令。
       if (!target.has_value())

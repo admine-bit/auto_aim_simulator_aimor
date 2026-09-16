@@ -1,5 +1,6 @@
 use bevy::input::mouse::MouseMotion;
 use bevy::prelude::*;
+use bevy::window::{CursorGrabMode, CursorOptions};
 use std::f32::consts::PI;
 
 use crate::components::{
@@ -8,6 +9,33 @@ use crate::components::{
 };
 use crate::config::SimulationConfig;
 use crate::systems::ControllerState;
+
+fn set_cursor_captured(cursor_options: &mut CursorOptions, captured: bool) {
+    cursor_options.visible = !captured;
+    cursor_options.grab_mode = if captured {
+        CursorGrabMode::Locked
+    } else {
+        CursorGrabMode::None
+    };
+}
+
+pub fn capture_cursor_on_startup(mut cursor_options: Single<&mut CursorOptions>) {
+    set_cursor_captured(&mut cursor_options, true);
+}
+
+pub fn cursor_capture_controls(
+    mouse_buttons: Res<ButtonInput<MouseButton>>,
+    keyboard: Res<ButtonInput<KeyCode>>,
+    mut cursor_options: Single<&mut CursorOptions>,
+) {
+    if keyboard.just_pressed(KeyCode::Escape) {
+        set_cursor_captured(&mut cursor_options, false);
+    } else if mouse_buttons.just_pressed(MouseButton::Left)
+        || mouse_buttons.just_pressed(MouseButton::Right)
+    {
+        set_cursor_captured(&mut cursor_options, true);
+    }
+}
 
 pub fn following_controls(mut mode: ResMut<CameraMode>, controller: Res<ControllerState>) {
     if controller.controlled.switch_camera_just_pressed {
@@ -58,6 +86,7 @@ pub fn freecam_controls(
     config: Res<SimulationConfig>,
     mut mouse_motion_events: MessageReader<MouseMotion>,
     keyboard: Res<ButtonInput<KeyCode>>,
+    cursor_options: Single<&CursorOptions>,
     camera_query: Single<&mut Transform, (With<MainCamera>, Without<Infantry>)>,
 ) {
     if mode.0 != FollowingType::Free {
@@ -72,7 +101,7 @@ pub fn freecam_controls(
         mouse_delta += event.delta;
     }
 
-    if mouse_delta != Vec2::ZERO {
+    if mouse_delta != Vec2::ZERO && cursor_options.grab_mode != CursorGrabMode::None {
         let (yaw, pitch, roll) = camera_transform.rotation.to_euler(EulerRot::YXZ);
 
         let new_yaw = yaw - mouse_delta.x * config.camera.mouse_sensitivity;
@@ -103,5 +132,23 @@ pub fn freecam_controls(
     }
     if keyboard.pressed(KeyCode::KeyJ) {
         camera_transform.translation -= up * speed;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn cursor_capture_hides_and_locks_until_released() {
+        let mut cursor = CursorOptions::default();
+
+        set_cursor_captured(&mut cursor, true);
+        assert!(!cursor.visible);
+        assert_eq!(cursor.grab_mode, CursorGrabMode::Locked);
+
+        set_cursor_captured(&mut cursor, false);
+        assert!(cursor.visible);
+        assert_eq!(cursor.grab_mode, CursorGrabMode::None);
     }
 }

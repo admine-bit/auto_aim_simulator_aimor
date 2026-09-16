@@ -53,8 +53,9 @@ IMU型号：使用C板内置BMI088作为IMU\
     ```bash
     sudo apt install -y \
         git \
-        g++ \
+        build-essential \
         cmake \
+        pkg-config \
         can-utils \
         libopencv-dev \
         libfmt-dev \
@@ -62,6 +63,7 @@ IMU型号：使用C板内置BMI088作为IMU\
         libspdlog-dev \
         libyaml-cpp-dev \
         libusb-1.0-0-dev \
+        libceres-dev \
         nlohmann-json3-dev \
         openssh-server \
         screen
@@ -70,10 +72,15 @@ IMU型号：使用C板内置BMI088作为IMU\
 2. 编译：
     ```bash
     cmake -B build
-    make -C build/ -j`nproc`
+    make -C build -j12
     ```
-    如果 OpenVINO 安装在 Conda 环境中，可通过 `-DOpenVINO_DIR=<OpenVINOConfig.cmake所在目录>`
-    指定 CMake 包路径；不指定时使用项目配置中的系统安装路径。
+    默认构建使用系统 OpenVINO，并自动忽略当前 shell 中激活的 Conda 包路径。若旧的
+    `build/` 曾缓存 Conda 依赖，先执行一次 `cmake --fresh -B build`，之后即可继续使用
+    上述普通命令。
+
+    只有明确需要整套 Conda 依赖时，才同时指定
+    `-DIMCA_ALLOW_CONDA_PACKAGES=ON` 和
+    `-DOpenVINO_DIR=<OpenVINOConfig.cmake所在目录>`；不要用该模式替代缺失的系统开发包。
 
 3. 运行demo:
     ```bash
@@ -360,16 +367,16 @@ DPS = 单位时间射击窗口占比 \times 射频 \times 单发子弹伤害
 
 ## 推理后端选择
 
-工程在 `cmake/inference_backend.cmake` 中预先选择推理后端：
+工程默认使用系统 OpenVINO。通过 CMake 参数选择推理后端，无需修改源码：
 
-```cmake
-set(SP_INFERENCE_BACKEND "OPENVINO")
+```bash
+cmake -B build -DIMCA_INFERENCE_BACKEND=OPENVINO
 ```
 
-Jetson Orin Nano Super 使用 TensorRT 时，将其改为：
+Jetson Orin Nano Super 使用 TensorRT 时，使用独立构建目录配置：
 
-```cmake
-set(SP_INFERENCE_BACKEND "TENSORRT")
+```bash
+cmake -B build-tensorrt -DIMCA_INFERENCE_BACKEND=TENSORRT
 ```
 
 `YOLOV5`、`YOLOV8`、`YOLO11`、`Classifier`、`YOLO11_BUFF` 和多线程检测器都会使用当前编译时选择的后端。一次编译只包含一种后端，不通过 YAML 在运行时切换。

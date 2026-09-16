@@ -29,6 +29,21 @@ metalfx_frame_generation = false
 # Output/render resolution ratio used by MetalFX temporal upscaling. Clamped to 1.0..=3.0.
 metalfx_scale = 2.0
 illuminance = 500.0
+
+[scene]
+# Optional custom glTF/GLB models loaded at startup. Paths are relative to assets/.
+# Repeat [[scene.models]] to load multiple models. Restart the simulator after editing this list.
+#
+# [[scene.models]]
+# path = "custom/my_model.glb"
+# enabled = true
+# scene_index = 0
+# position = [3.0, 0.0, 2.0]      # metres, Bevy world coordinates (Y up)
+# rotation = [0.0, 90.0, 0.0]    # XYZ Euler angles in degrees
+# scale = 1.0                     # uniform scale, must be greater than zero
+# collision = false               # true creates static triangle-mesh collision
+# collision_nodes = []            # empty: whole hierarchy; otherwise exact parent node names
+
 [capture.color]
 # RGB capture resolution for existing camera pipeline.
 width = 1440
@@ -67,16 +82,16 @@ acceleration_exponent = 2.5    # exponent for non-linear acceleration curve
 # Closed-loop tracking of external auto-aim (Talos/ROS2) gimbal commands.
 # Yaw and pitch are independent loops with independent gains.
 [vehicle.gimbal_pid.yaw]
-kp = 1.0
-ki = 0.01
-kd = 0.5
+kp = 20.0
+ki = 0.0
+kd = 0.1
 integral_limit = 0.5            # rad*s - anti-windup bound on the integral term
 max_rate = 10.0                # rad/s - saturation of the commanded yaw rate
 
 [vehicle.gimbal_pid.pitch]
-kp = 1.0
-ki = 0.01
-kd = 0.4
+kp =20.0
+ki = 0.0
+kd = 0.0
 integral_limit = 0.5            # rad*s - anti-windup bound on the integral term
 max_rate = 10.0                # rad/s - saturation of the commanded pitch rate
 
@@ -105,4 +120,4 @@ wind = [0.0, 0.0, 0.0]          # m/s - wind velocity in world coordinates
 fov = 45.0                      # degrees - field of view
 free_move_speed = 8.0           # m/s - free camera movement speed
 follow_offset = [0.0, 3.0, 2.0] # follow camera offset
-mouse_sensitivity = 0.003       # mouse look sensitivity
+mouse_sensitivity = 0.001       # mouse sensitivity for the player gimbal and free camera

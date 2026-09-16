@@ -114,9 +114,9 @@ int main(int argc, char *argv[])
         auto gs = gimbal.state();
         auto plan = planner.plan(target, gs.bullet_speed);// 发送规划结果到下位机（控制使能、开火指令、角度、速度、加速度等）
         
-        plan.pitch = - plan.pitch;
-        plan.pitch_vel = - plan.pitch_vel;
-        plan.pitch_acc = - plan.pitch_acc;
+        // plan.pitch = - plan.pitch;
+        // plan.pitch_vel = - plan.pitch_vel;
+        // plan.pitch_acc = - plan.pitch_acc;
 
         double min_dist = 1.0;  // 无目标时默认值，避免除零
         if (target.has_value()) 

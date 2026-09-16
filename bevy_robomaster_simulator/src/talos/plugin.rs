@@ -141,7 +141,7 @@ fn process_subscription(
         });
     }
 
-    let target = GimbalAimTarget::from_solver_degrees(cmd.yaw_deg, -cmd.pitch_deg);
+    let target = target_from_talos_degrees(cmd.yaw_deg, cmd.pitch_deg);
     match tracker {
         Some(mut tracker) => tracker.retarget(target),
         None => {
@@ -149,6 +149,16 @@ fn process_subscription(
                 .entity(gimbal_entity)
                 .insert(GimbalAimTracker::new(target));
         }
+    }
+}
+
+/// Talos carries the desired muzzle-frame Euler angles directly. Its pitch is already shifted
+/// for the simulator's local `+Y` launch axis (`-90°` is horizontal, `-80°` is 10° upward), so
+/// applying `from_solver_degrees` here would negate/shift the pitch a second time.
+fn target_from_talos_degrees(yaw_deg: f32, pitch_deg: f32) -> GimbalAimTarget {
+    GimbalAimTarget {
+        yaw: yaw_deg.to_radians(),
+        pitch: pitch_deg.to_radians(),
     }
 }
 
@@ -201,4 +211,21 @@ pub fn to_ros_quat(quat: Quat) -> Quat {
     let align_quat = Quat::from_mat3(&align_rot_mat);
     let new_rotation = align_quat * quat * align_quat.inverse();
     new_rotation
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn talos_pitch_is_already_a_muzzle_frame_angle() {
+        for elevation_deg in [-20.0_f32, 0.0, 10.0, 45.0] {
+            let talos_pitch_deg = elevation_deg - 90.0;
+            let talos_target = target_from_talos_degrees(15.0, talos_pitch_deg);
+            let solver_target = GimbalAimTarget::from_solver_degrees(15.0, elevation_deg);
+
+            assert!((talos_target.yaw - solver_target.yaw).abs() < 1e-6);
+            assert!((talos_target.pitch - solver_target.pitch).abs() < 1e-6);
+        }
+    }
 }

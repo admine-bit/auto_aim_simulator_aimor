@@ -4,8 +4,89 @@ project(imca_vision)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_BUILD_TYPE Release)
+if(NOT CMAKE_CONFIGURATION_TYPES AND NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
+endif()
 message(STATUS "--------------------CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}--------------------")
+
+# Keep the default build independent from an activated Conda environment.
+# CMake searches every "bin" entry in PATH as a package prefix, so an active
+# Conda shell can otherwise mix Conda fmt/yaml-cpp/nlohmann_json with the
+# system spdlog library. That combination is ABI/API incompatible on this host.
+option(IMCA_ALLOW_CONDA_PACKAGES "Allow dependencies to be resolved from Conda environments" OFF)
+
+if(NOT IMCA_ALLOW_CONDA_PACKAGES)
+    set(_imca_conda_prefixes "$ENV{CONDA_PREFIX}" "$ENV{_CONDA_ROOT}")
+
+    if(DEFINED ENV{PATH})
+        string(REPLACE ":" ";" _imca_path_entries "$ENV{PATH}")
+        foreach(_imca_path_entry IN LISTS _imca_path_entries)
+            if(NOT _imca_path_entry)
+                continue()
+            endif()
+
+            get_filename_component(_imca_path_name "${_imca_path_entry}" NAME)
+            if(_imca_path_name STREQUAL "bin" OR _imca_path_name STREQUAL "condabin")
+                get_filename_component(_imca_path_prefix "${_imca_path_entry}" DIRECTORY)
+                if(EXISTS "${_imca_path_prefix}/conda-meta" OR
+                   EXISTS "${_imca_path_prefix}/condabin/conda")
+                    list(APPEND _imca_conda_prefixes "${_imca_path_prefix}")
+                endif()
+            endif()
+        endforeach()
+    endif()
+
+    list(FILTER _imca_conda_prefixes EXCLUDE REGEX "^$")
+    list(REMOVE_DUPLICATES _imca_conda_prefixes)
+    if(_imca_conda_prefixes)
+        list(APPEND CMAKE_IGNORE_PREFIX_PATH ${_imca_conda_prefixes})
+        list(REMOVE_DUPLICATES CMAKE_IGNORE_PREFIX_PATH)
+        message(STATUS "Ignoring Conda package prefixes: ${_imca_conda_prefixes}")
+    endif()
+
+    # A previous configure may have persisted package *_DIR entries below a
+    # Conda prefix. Drop only those stale entries; preserve all other explicit
+    # package paths supplied by the user. CMake's generated target metadata can
+    # still contain the old imported library paths, so require one fresh
+    # regeneration instead of allowing a misleading incremental build.
+    set(_imca_discarded_conda_cache FALSE)
+    foreach(_imca_package_dir IN ITEMS
+            OpenCV_DIR fmt_DIR Eigen3_DIR spdlog_DIR yaml-cpp_DIR
+            nlohmann_json_DIR Ceres_DIR OpenVINO_DIR)
+        if(NOT DEFINED ${_imca_package_dir})
+            continue()
+        endif()
+
+        set(_imca_probe "${${_imca_package_dir}}")
+        set(_imca_cached_from_conda FALSE)
+        while(IS_ABSOLUTE "${_imca_probe}")
+            if(EXISTS "${_imca_probe}/conda-meta")
+                set(_imca_cached_from_conda TRUE)
+                break()
+            endif()
+
+            get_filename_component(_imca_parent "${_imca_probe}" DIRECTORY)
+            if("${_imca_parent}" STREQUAL "${_imca_probe}")
+                break()
+            endif()
+            set(_imca_probe "${_imca_parent}")
+        endwhile()
+
+        if(_imca_cached_from_conda)
+            message(STATUS "Discarding cached Conda package path: ${_imca_package_dir}=${${_imca_package_dir}}")
+            set(_imca_discarded_conda_cache TRUE)
+            unset(${_imca_package_dir} CACHE)
+            unset(${_imca_package_dir})
+        endif()
+    endforeach()
+
+    if(_imca_discarded_conda_cache)
+        message(FATAL_ERROR
+            "This build directory was previously configured with Conda packages. "
+            "Regenerate it once with: cmake --fresh -B \"${CMAKE_BINARY_DIR}\". "
+            "After that, the normal cmake -B build and make -C build commands are sufficient.")
+    endif()
+endif()
 
 include(cmake/inference_backend.cmake)
 
@@ -22,10 +103,18 @@ find_package(yaml-cpp REQUIRED)
 find_package(nlohmann_json REQUIRED)
 find_package(Ceres REQUIRED)
 
+message(STATUS "Dependency package roots:")
+message(STATUS "  OpenCV: ${OpenCV_DIR}")
+message(STATUS "  fmt: ${fmt_DIR}")
+message(STATUS "  spdlog: ${spdlog_DIR}")
+message(STATUS "  yaml-cpp: ${yaml-cpp_DIR}")
+message(STATUS "  nlohmann_json: ${nlohmann_json_DIR}")
+message(STATUS "  Ceres: ${Ceres_DIR}")
+
 # 两种构建互斥，Jetson TensorRT 版本不查找 OpenVINO。
 if(IMCA_INFERENCE_BACKEND STREQUAL "OPENVINO")
-    # Allow Conda/Python OpenVINO packages to provide their CMake package path.
-    # Keep the original system installation as the fallback for robot hosts.
+    # Prefer the host SDK. Conda package paths are accepted only when the build
+    # is explicitly configured with IMCA_ALLOW_CONDA_PACKAGES=ON.
     if(NOT OpenVINO_DIR)
         set(OpenVINO_DIR "/opt/intel/openvino_2024.6.0/runtime/cmake/")
     endif()

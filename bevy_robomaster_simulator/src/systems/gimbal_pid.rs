@@ -2,6 +2,9 @@ use bevy::prelude::*;
 
 use crate::components::{Controlled, InfantryChassis, InfantryGimbal, InfantryLaunchOffset};
 use crate::config::{GimbalAxisPidConfig, SimulationConfig};
+use crate::systems::ControllerState;
+
+const MANUAL_GIMBAL_OVERRIDE_SECONDS: f32 = 0.12;
 
 /// Absolute muzzle-frame aim target produced by an external auto-aim solver.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -104,11 +107,29 @@ fn tracking_error(
     )
 }
 
+fn manual_gimbal_override_active(
+    controller: &ControllerState,
+    elapsed: f32,
+    remaining: &mut f32,
+) -> bool {
+    if controller.controlled.has_gimbal_input() {
+        *remaining = MANUAL_GIMBAL_OVERRIDE_SECONDS;
+        return true;
+    }
+    if *remaining > 0.0 {
+        *remaining = (*remaining - elapsed.max(0.0)).max(0.0);
+        return true;
+    }
+    false
+}
+
 /// Replaces the direct pose snap that auto-aim used to apply: the solver target is
 /// tracked by a rate-limited PID loop so the gimbal moves like an actuated axis.
 pub fn gimbal_pid_controls(
     time: Res<Time>,
     config: Res<SimulationConfig>,
+    controller: Res<ControllerState>,
+    mut manual_override_remaining: Local<f32>,
     gimbal: Option<
         Single<
             (
@@ -126,13 +147,20 @@ pub fn gimbal_pid_controls(
     >,
     muzzle: Option<Single<&GlobalTransform, (With<InfantryLaunchOffset>, With<Controlled>)>>,
 ) {
-    let (Some(gimbal), Some(muzzle)) = (gimbal, muzzle) else {
-        return;
-    };
     let dt = time.delta_secs();
     if dt <= 0.0 {
         return;
     }
+
+    // Keep the subscription alive while giving live mouse/stick input priority. A short grace
+    // period bridges the gaps between mouse reports when rendering faster than the mouse poll rate.
+    if manual_gimbal_override_active(&controller, dt, &mut manual_override_remaining) {
+        return;
+    }
+
+    let (Some(gimbal), Some(muzzle)) = (gimbal, muzzle) else {
+        return;
+    };
 
     let (mut gimbal_transform, gimbal_global, mut gimbal_data, mut tracker) = gimbal.into_inner();
 
@@ -197,6 +225,45 @@ mod tests {
 
         assert!((yaw_rate - 5.0).abs() < 1e-5);
         assert_eq!(pitch_rate, 1.0);
+    }
+
+    #[test]
+    fn manual_gimbal_input_temporarily_overrides_auto_aim_pid() {
+        let mut controller = ControllerState::default();
+        let mut remaining = 0.0;
+        assert!(!manual_gimbal_override_active(
+            &controller,
+            0.01,
+            &mut remaining
+        ));
+
+        controller.controlled.gimbal_delta = Vec2::new(0.01, 0.0);
+        assert!(manual_gimbal_override_active(
+            &controller,
+            0.01,
+            &mut remaining
+        ));
+        assert_eq!(remaining, MANUAL_GIMBAL_OVERRIDE_SECONDS);
+
+        controller.reset_frame();
+        assert!(manual_gimbal_override_active(
+            &controller,
+            0.05,
+            &mut remaining
+        ));
+        assert!(remaining > 0.0);
+
+        assert!(manual_gimbal_override_active(
+            &controller,
+            MANUAL_GIMBAL_OVERRIDE_SECONDS,
+            &mut remaining
+        ));
+        assert_eq!(remaining, 0.0);
+        assert!(!manual_gimbal_override_active(
+            &controller,
+            0.01,
+            &mut remaining
+        ));
     }
 
     #[test]

@@ -206,7 +206,8 @@ pub fn setup_collision(
     mut commands: Commands,
     children: Query<&Children>,
     name: Query<&Name, With<Children>>,
-) {
+) -> usize {
+    let mut matched = 0;
     for e in children.iter_descendants(root) {
         let Ok(name) = name.get(e) else {
             continue;
@@ -224,5 +225,7 @@ pub fn setup_collision(
         if visibility == &Visibility::Hidden {
             commands.entity(e).insert(*visibility);
         }
+        matched += 1;
     }
+    matched
 }

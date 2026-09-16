@@ -57,6 +57,7 @@ impl Default for PoseMeta {
 pub struct GimbalCmd {
     pub timestamp_ns: u64,
     pub yaw_deg: f32,
+    /// Desired muzzle-frame X Euler angle in degrees (`-90` horizontal, larger values upward).
     pub pitch_deg: f32,
     pub distance_m: f32,
     pub fire_advice: u8,

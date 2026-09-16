@@ -1,9 +1,7 @@
 use bevy::prelude::*;
-use std::sync::atomic::Ordering;
 
 use crate::components::{
     ActiveSlapper, Controlled, Infantry, InfantryChassis, InfantryGimbal, SlapperInfantry,
-    SubscribeAutoAim,
 };
 use crate::config::SimulationConfig;
 use crate::robomaster::vehicle::movement::VehicleDynamic;
@@ -155,17 +153,12 @@ pub fn remote_vehicle_controls(
 pub fn gimbal_controls(
     time: Res<Time>,
     controller: Res<ControllerState>,
-    enabled: Res<SubscribeAutoAim>,
     config: Res<SimulationConfig>,
     gimbal: Single<
         (&mut Transform, &mut InfantryGimbal),
         (With<Controlled>, Without<InfantryChassis>),
     >,
 ) {
-    if enabled.load(Ordering::Acquire) {
-        return;
-    }
-
     let dt = time.delta_secs();
     let (mut gimbal_transform, mut gimbal_data) = gimbal.into_inner();
 
@@ -174,8 +167,8 @@ pub fn gimbal_controls(
 
     let controller = controller.controlled;
     let rotation_speed = config.vehicle.gimbal_rotation_speed * controller.gimbal_scale() * dt;
-    gimbal_data.local_yaw += controller.gimbal.x * rotation_speed;
-    gimbal_data.pitch += controller.gimbal.y * rotation_speed;
+    gimbal_data.local_yaw += controller.gimbal.x * rotation_speed + controller.gimbal_delta.x;
+    gimbal_data.pitch += controller.gimbal.y * rotation_speed + controller.gimbal_delta.y;
 
     gimbal_data.pitch = gimbal_data.pitch.clamp(
         -config.vehicle.gimbal_pitch_limit,
