@@ -297,9 +297,15 @@ const _: () = assert!(std::mem::offset_of!(ShmMetaRegion, runtime_state) == 3648
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PoseIndex {
+    /// Barrel-aligned gimbal axes: +X forward, +Y left, +Z up. Rotation is
+    /// gimbal -> ROS world, quaternion [w,x,y,z]; origin is in Odom.position.
     Gimbal = 0,
+    /// Actual gimbal origin in ROS world metres (not camera position or chassis ground height).
     Odom = 1,
+    /// Actual muzzle position relative to the reported gimbal, in metres.
     Muzzle = 2,
+    /// OpenCV optical camera -> reported gimbal: p_g = R(q) * p_cv + position.
+    /// Nonzero physical mounting is preserved; quaternion is [w,x,y,z], not identity.
     Camera = 3,
     // Legacy compatibility channel.
     // New integrations should consume `ShmMetaRegion::chassis_observation` instead.

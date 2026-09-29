@@ -82,18 +82,18 @@ acceleration_exponent = 2.5    # exponent for non-linear acceleration curve
 # Closed-loop tracking of external auto-aim (Talos/ROS2) gimbal commands.
 # Yaw and pitch are independent loops with independent gains.
 [vehicle.gimbal_pid.yaw]
-kp = 20.0
-ki = 0.0
-kd = 0.1
-integral_limit = 0.5            # rad*s - anti-windup bound on the integral term
-max_rate = 10.0                # rad/s - saturation of the commanded yaw rate
-
-[vehicle.gimbal_pid.pitch]
-kp =20.0
+kp = 4.0
 ki = 0.0
 kd = 0.0
 integral_limit = 0.5            # rad*s - anti-windup bound on the integral term
-max_rate = 10.0                # rad/s - saturation of the commanded pitch rate
+max_rate = 3.0                 # rad/s - saturation of the commanded yaw rate
+
+[vehicle.gimbal_pid.pitch]
+kp = 4.0
+ki = 0.0
+kd = 0.0
+integral_limit = 0.5            # rad*s - anti-windup bound on the integral term
+max_rate = 3.0                 # rad/s - saturation of the commanded pitch rate
 
 [mecanum]
 wheel_radius_m = 0.076          # wheel radius (m)

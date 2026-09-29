@@ -1,6 +1,14 @@
 .git_backup/
 **/.git_backup/
 
+# Machine-local simulation dependencies
+.local-deps/
+bevy_robomaster_simulator/.legacy-vision-build/
+bevy_robomaster_simulator/.legacy-vision-run/
+bevy_robomaster_simulator/.legacy-vision-copy-build/
+bevy_robomaster_simulator/.legacy-vision-source/
+bevy_robomaster_simulator/legacy_vision/libcamera_shim.so
+
 # Intel installation packages
 imca_vision_26aim/neo/
 

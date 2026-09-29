@@ -113,6 +113,10 @@
 
 * `gimbal_cmd` - 云台控制命令（含开火建议）
 
+Talos 相机外参由实际安装位置计算，不改变相机位置或 PID。启动仿真与视觉消费者后，
+运行 `/usr/bin/python3 tools/read_talos_calibration.py` 查看真实内外参及云台姿态。
+具体坐标约定和视觉接收端限制见[使用手册 8.1 节](仿真自瞄与云台控制使用手册.md#81-如实回传云台和相机参数不改变相机安装位置)。
+
 ---
 
 ### 自定义场景模型
@@ -197,6 +201,32 @@ collision_nodes = []             # 空：整个模型；非空：指定 Blender 
 * **F5**：持续自瞄订阅开关；鼠标右键则是按住期间开启
 
 ### 与 imca_vision 联调
+
+#### 运行未接入 Talos 的原版视觉源码
+
+对于保留海康相机 SDK 和 115200 串口接口的视觉源码，可直接运行：
+
+```bash
+./start_legacy_vision.sh
+```
+
+默认读取 `/home/ad/code_game/imca_vision_26aim`。其他位置可设置
+`LEGACY_VISION_SOURCE=/path/to/imca_vision_26aim ./start_legacy_vision.sh`。
+脚本将源码复制到本仿真器目录下的 `.legacy-vision-source/`，在
+`.legacy-vision-copy-build/` 构建 `auto_aim_debug_mpc`，再运行仿真器、相机兼容层与串口桥。
+源码原目录保持只读；模型、标定和运行日志均使用仿真器内的副本。
+生成的 `sentry-sim.yaml` 仅放在副本内，串口端口与相机内外参取自当前仿真器，
+敌方颜色设为仿真场景的蓝方目标。
+默认由按住鼠标右键临时开启自瞄，松开后恢复手动；`F5` 可切换持续自瞄。
+需要启动即持续自瞄时可设置 `AUTO_AIM=1`。有有效目标时桥接层将视觉程序的云台和开火指令回传给仿真器。
+若自瞄点上下偏移，调整 `start_legacy_vision.sh` 顶部的 `GIMBAL_HEIGHT_OFFSET_M`（米）：
+瞄点偏高就减小，偏低就增大。当前默认 `-0.5`，重启脚本后生效；
+也可在启动时用同名环境变量临时覆盖，生效值会打印在桥接日志中。
+
+该入口需要本机已安装的 OpenVINO 2024.6、OpenCV、Ceres 等源码构建依赖以及
+`python3-yaml`、`rsync`；本机补充依赖路径由仓库根目录的 `simulation_env.sh` 加载。
+
+#### 运行已接入 Talos 的视觉源码
 
 仿真器默认启用 Talos 共享内存接口。启动视觉源码中的 `standard_mpc` 前，先在本目录启动仿真器：
 

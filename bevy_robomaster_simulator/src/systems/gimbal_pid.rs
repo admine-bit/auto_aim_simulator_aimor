@@ -82,24 +82,28 @@ fn wrap_angle(angle: f32) -> f32 {
     wrapped - std::f32::consts::PI
 }
 
-/// Tracking error as `(yaw, pitch)` in the gimbal's own local frame, i.e. in the same
-/// coordinates as `InfantryGimbal`. The solver target aims the *muzzle* in world space,
-/// so the muzzle's fixed mount offset and the chassis rotation are divided out first —
-/// measuring the error in world space instead flips the pitch sign for any mount whose
-/// local axes disagree with the world axes.
+/// Compare the barrel direction in the gimbal parent's frame. An Euler decomposition of
+/// the full muzzle orientation is ambiguous when its X angle crosses -90 degrees (a
+/// downward shot): the equivalent rotation can acquire 180 degrees of yaw and roll.
+/// The projectile only cares where muzzle +Y points, so ignore that arbitrary roll.
 fn tracking_error(
     target_rotation: Quat,
     gimbal_local: Quat,
     gimbal_world: Quat,
     muzzle_world: Quat,
 ) -> Vec2 {
-    // World-space correction that would put the muzzle on target right now.
-    let correction = target_rotation * muzzle_world.inverse();
-    // Same correction expressed as the gimbal's desired local rotation.
-    let desired_local = gimbal_local * gimbal_world.inverse() * correction * gimbal_world;
-
-    let (desired_yaw, desired_pitch, _) = desired_local.to_euler(EulerRot::YXZ);
-    let (current_yaw, current_pitch, _) = gimbal_local.to_euler(EulerRot::YXZ);
+    let parent_world = gimbal_world * gimbal_local.inverse();
+    let world_to_parent = parent_world.inverse();
+    let desired = world_to_parent * (target_rotation * Vec3::Y);
+    let current = world_to_parent * (muzzle_world * Vec3::Y);
+    let angles = |direction: Vec3| {
+        (
+            (-direction.x).atan2(-direction.z),
+            direction.y.atan2(direction.x.hypot(direction.z)),
+        )
+    };
+    let (desired_yaw, desired_pitch) = angles(desired);
+    let (current_yaw, current_pitch) = angles(current);
 
     Vec2::new(
         wrap_angle(desired_yaw - current_yaw),
@@ -314,30 +318,30 @@ mod tests {
 
     #[test]
     fn error_points_the_same_way_as_the_local_angles_on_a_bare_gimbal() {
-        let target = Quat::from_euler(EulerRot::YXZ, 0.3, -0.2, 0.0);
-        let error = tracking_error(target, Quat::IDENTITY, Quat::IDENTITY, Quat::IDENTITY);
+        let mount = Quat::from_rotation_x(-std::f32::consts::FRAC_PI_2);
+        let target = Quat::from_euler(EulerRot::YXZ, 0.3, -0.2, 0.0) * mount;
+        let error = tracking_error(target, Quat::IDENTITY, Quat::IDENTITY, mount);
 
         assert!((error.x - 0.3).abs() < 1e-5);
         assert!((error.y + 0.2).abs() < 1e-5);
     }
 
-    /// Guards the pitch sign. The gimbal's pitch axis is its *local* X, which points
-    /// against world X once the gimbal has yawed past 90 degrees; an error read off the
-    /// world-space correction is inverted there and drives pitch away from the target.
+    /// A downward shot has a muzzle X angle below -90 degrees. The barrel direction
+    /// must still yield the short yaw path and a negative local pitch correction.
     #[test]
-    fn pitch_error_keeps_its_sign_when_the_gimbal_faces_backwards() {
-        let local = Quat::from_rotation_y(std::f32::consts::PI);
-        let target = local * Quat::from_rotation_x(0.1);
-        let error = tracking_error(target, local, local, local);
+    fn downward_target_does_not_flip_yaw() {
+        let mount = Quat::from_rotation_x(-std::f32::consts::FRAC_PI_2);
+        let target = Quat::from_euler(EulerRot::YXZ, -0.3, -1.75, 0.0);
+        let error = tracking_error(target, Quat::IDENTITY, Quat::IDENTITY, mount);
 
-        assert!(error.x.abs() < 1e-5, "yaw leaked {}", error.x);
-        assert!((error.y - 0.1).abs() < 1e-5, "pitch error was {}", error.y);
+        assert!((error.x + 0.3).abs() < 1e-5, "yaw error was {}", error.x);
+        assert!((error.y + 0.17920367).abs() < 1e-5, "pitch error was {}", error.y);
     }
 
     #[test]
     fn closed_loop_converges_through_a_mount_offset_and_chassis_yaw() {
         let chassis = Quat::from_rotation_y(2.8);
-        let mount = Quat::from_euler(EulerRot::YXZ, 0.4, 0.25, 0.15);
+        let mount = Quat::from_euler(EulerRot::YXZ, 0.04, -1.52, 0.015);
         let goal = Quat::from_euler(EulerRot::YXZ, 0.3, -0.2, 0.0);
         let target = chassis * goal * mount;
 

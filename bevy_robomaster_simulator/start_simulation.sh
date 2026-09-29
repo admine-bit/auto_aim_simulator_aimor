@@ -16,6 +16,10 @@ set -Eeuo pipefail
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 PROJECT_ROOT="$(cd -- "${SCRIPT_DIR}/.." && pwd -P)"
 
+if [[ -f "${PROJECT_ROOT}/simulation_env.sh" ]]; then
+  source "${PROJECT_ROOT}/simulation_env.sh"
+fi
+
 # ===== 可编辑配置 =====
 SIMULATOR_DIR="${SIMULATOR_DIR:-${SCRIPT_DIR}}"
 SIMULATOR_BIN="${SIMULATOR_BIN:-}"
@@ -25,7 +29,7 @@ PROGRAM_WORKDIR="${PROGRAM_WORKDIR:-${PROJECT_ROOT}/imca_vision_26aim}"
 PROGRAM_ARGS=("configs/sentry.yaml")
 CARGO_BIN="${CARGO_BIN:-cargo}"
 AUTO_AIM="${AUTO_AIM:-0}"
-IMCA_VISION_DEBUG_WINDOWS="${IMCA_VISION_DEBUG_WINDOWS:-1}"
+IMCA_VISION_DEBUG_WINDOWS="${IMCA_VISION_DEBUG_WINDOWS:-0}"
 IPC_TIMEOUT_SECONDS="${IPC_TIMEOUT_SECONDS:-30}"
 # =====================
 
@@ -270,7 +274,7 @@ while ! ipc_ready; do
     die "等待 Talos 共享内存超时（${IPC_TIMEOUT_SECONDS}s）：$META_FILE"
   fi
   if ((SIMULATOR_STARTED == 1)) && ! kill -0 "$SIMULATOR_PID" 2>/dev/null; then
-    wait "$SIMULATOR_PID" || trueo_a
+    wait "$SIMULATOR_PID" || true
     die "Daedalus 在共享内存就绪前退出"
   fi
   sleep 0.1

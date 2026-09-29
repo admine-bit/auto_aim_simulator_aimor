@@ -260,18 +260,18 @@ impl Default for GimbalPidConfig {
     fn default() -> Self {
         Self {
             yaw: GimbalAxisPidConfig {
-                kp: 12.0,
-                ki: 0.5,
-                kd: 0.35,
+                kp: 4.0,
+                ki: 0.0,
+                kd: 0.0,
                 integral_limit: 0.5,
-                max_rate: 20.0,
+                max_rate: 3.0,
             },
             pitch: GimbalAxisPidConfig {
-                kp: 10.0,
-                ki: 0.5,
-                kd: 0.3,
+                kp: 4.0,
+                ki: 0.0,
+                kd: 0.0,
                 integral_limit: 0.5,
-                max_rate: 12.0,
+                max_rate: 3.0,
             },
         }
     }
@@ -292,11 +292,11 @@ pub struct GimbalAxisPidConfig {
 impl Default for GimbalAxisPidConfig {
     fn default() -> Self {
         Self {
-            kp: 12.0,
-            ki: 0.5,
-            kd: 0.35,
+            kp: 4.0,
+            ki: 0.0,
+            kd: 0.0,
             integral_limit: 0.5,
-            max_rate: 20.0,
+            max_rate: 3.0,
         }
     }
 }
