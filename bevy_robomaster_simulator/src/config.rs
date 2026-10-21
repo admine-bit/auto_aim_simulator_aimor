@@ -28,18 +28,45 @@ pub struct SimulationConfig {
     pub mecanum: MecanumConfig,
     pub projectile: ProjectileConfig,
     pub camera: CameraConfig,
+    #[serde(default)]
+    pub ballistic_hud: BallisticHudConfig,
 }
 
 #[derive(Deserialize, Reflect, Clone)]
+#[serde(default)]
+pub struct BallisticHudConfig {
+    pub enabled: bool,
+    pub automatic_range: bool,
+    pub manual_range_m: f32,
+    pub max_range_m: f32,
+    pub range_step_m: f32,
+}
+
+impl Default for BallisticHudConfig {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            automatic_range: true,
+            manual_range_m: 5.0,
+            max_range_m: 50.0,
+            range_step_m: 0.5,
+        }
+    }
+}
+
+#[derive(Deserialize, Reflect, Clone)]
+#[serde(default)]
 pub struct WindowConfig {
     pub present_mode: String,
+    pub max_fps: u32,
 }
 
 impl Default for WindowConfig {
     fn default() -> Self {
         Self {
-            // Uncap rendering by default so off-screen capture (Talos/ROS2) can exceed 60Hz.
+            // Presentation is independent of the configurable CPU frame budget.
             present_mode: "auto_no_vsync".to_string(),
+            max_fps: 100,
         }
     }
 }
@@ -104,6 +131,39 @@ impl Default for RenderConfig {
 #[serde(default)]
 pub struct SceneConfig {
     pub models: Vec<SceneModelConfig>,
+    pub player_start: PlayerStartConfig,
+}
+
+#[derive(Deserialize, Reflect, Clone, Debug, PartialEq)]
+#[serde(default)]
+pub struct PlayerStartConfig {
+    /// Bevy world coordinates in metres (Y is up).
+    pub position: [f32; 3],
+    /// Root rotation, XYZ Euler angles in radians.
+    pub rotation: [f32; 3],
+    /// Gimbal rotation relative to the vehicle model, in radians.
+    pub gimbal_yaw: f32,
+    pub gimbal_pitch: f32,
+}
+
+impl Default for PlayerStartConfig {
+    fn default() -> Self {
+        Self {
+            position: [0.8, 1.0, 6.0],
+            rotation: [0.0; 3],
+            gimbal_yaw: 0.0,
+            gimbal_pitch: 0.0,
+        }
+    }
+}
+
+impl PlayerStartConfig {
+    pub fn transform(&self) -> Transform {
+        let [x, y, z] = self.position;
+        let [rx, ry, rz] = self.rotation;
+        Transform::from_xyz(x, y, z)
+            .with_rotation(Quat::from_euler(EulerRot::XYZ, rx, ry, rz))
+    }
 }
 
 #[derive(Deserialize, Reflect, Clone, Debug, PartialEq)]
@@ -260,18 +320,18 @@ impl Default for GimbalPidConfig {
     fn default() -> Self {
         Self {
             yaw: GimbalAxisPidConfig {
-                kp: 4.0,
+                kp: 7.0,
                 ki: 0.0,
                 kd: 0.0,
                 integral_limit: 0.5,
-                max_rate: 3.0,
+                max_rate: 5.0,
             },
             pitch: GimbalAxisPidConfig {
-                kp: 4.0,
+                kp: 7.0,
                 ki: 0.0,
                 kd: 0.0,
                 integral_limit: 0.5,
-                max_rate: 3.0,
+                max_rate: 5.0,
             },
         }
     }
@@ -482,6 +542,7 @@ impl Default for SimulationConfig {
                     follow_offset: [0.0, 3.0, 2.0],
                     mouse_sensitivity: 0.003,
                 },
+                ballistic_hud: BallisticHudConfig::default(),
             }
         })
     }

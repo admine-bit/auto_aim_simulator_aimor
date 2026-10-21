@@ -23,8 +23,8 @@ impl ControllerHelp {
     const fn keyboard() -> Self {
         Self {
             source: "keyboard+mouse",
-            manual: "Mouse Aim | LMB Shoot | hold RMB AutoAim | WASD Move | F3 Camera | Q Gyro | F5 Toggle AutoAim | Tab Slapper",
-            auto_aim: "Mouse Manual Override | LMB Shoot | RMB Hold / F5 Toggle AutoAim | WASD Move | Q Gyro | Tab Slapper",
+            manual: "Mouse Aim | LMB Shoot | hold RMB AutoAim | WASD Move | F3 Camera | Q Gyro | F5 Toggle AutoAim | 0-5 Vision Mode | Tab Slapper",
+            auto_aim: "Mouse Manual Override | LMB Shoot | RMB Hold / F5 Toggle AutoAim | WASD Move | Q Gyro | 0-5 Vision Mode | Tab Slapper",
         }
     }
 
@@ -501,13 +501,19 @@ fn keyboard_controller_active(keyboard: &ButtonInput<KeyCode>) -> bool {
         KeyCode::KeyF,
         KeyCode::KeyV,
     ];
-    const EDGE_KEYS: [KeyCode; 6] = [
+    const EDGE_KEYS: [KeyCode; 12] = [
         KeyCode::KeyG,
         KeyCode::Tab,
         KeyCode::F3,
         KeyCode::F5,
         KeyCode::KeyQ,
         KeyCode::KeyU,
+        KeyCode::Digit0,
+        KeyCode::Digit1,
+        KeyCode::Digit2,
+        KeyCode::Digit3,
+        KeyCode::Digit4,
+        KeyCode::Digit5,
     ];
 
     HELD_KEYS.iter().any(|&key| keyboard.pressed(key))

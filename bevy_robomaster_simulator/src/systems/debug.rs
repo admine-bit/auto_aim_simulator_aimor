@@ -5,16 +5,21 @@ use bevy::window::{CursorIcon, SystemCursorIcon, Window};
 use crate::components::{SlapperInfantry, SubscribeAutoAim};
 use crate::robomaster::prelude::{Armor, ArmorStickerSelection};
 use crate::statistic::ProjectileStatistics;
-use crate::systems::ControllerState;
+use crate::systems::{ControllerState, VisionMode};
+
+#[derive(Component)]
+pub struct HelpText;
 
 fn create_help_text(
     auto_aim: bool,
     stats: &ProjectileStatistics,
     controller: &ControllerState,
+    vision_mode: VisionMode,
 ) -> Text {
     format!(
-        "auto-aim={} total={} accurate={} pct={:.2}\ncontroller={} mode={} gyro={} remote-gyro={}\n{}",
+        "auto-aim={} vision-mode={} total={} accurate={} pct={:.2}\ncontroller={} mode={} gyro={} remote-gyro={}\n{}",
         if auto_aim { "ON " } else { "OFF" },
+        vision_mode.0,
         stats.launch_count,
         stats.accurate_count,
         stats.accurate_pct(),
@@ -38,6 +43,7 @@ fn create_help_text(
 pub fn spawn_text(commands: &mut Commands) {
     commands.spawn((
         Text::new(""),
+        HelpText,
         Node {
             position_type: PositionType::Absolute,
             bottom: Val::Px(12.0),
@@ -48,16 +54,18 @@ pub fn spawn_text(commands: &mut Commands) {
 }
 
 pub fn update_help_text(
-    mut text: Query<&mut Text>,
+    mut text: Query<&mut Text, With<HelpText>>,
     auto_aim: Res<SubscribeAutoAim>,
     stats: Res<ProjectileStatistics>,
     controller: Res<ControllerState>,
+    vision_mode: Res<VisionMode>,
 ) {
     for mut text in text.iter_mut() {
         *text = create_help_text(
             auto_aim.load(std::sync::atomic::Ordering::Acquire),
             &stats,
             &controller,
+            *vision_mode,
         );
     }
 }

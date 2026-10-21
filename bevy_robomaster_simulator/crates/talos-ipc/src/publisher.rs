@@ -1,7 +1,7 @@
 use crate::layout::*;
 use crate::shm::{ShmError, ShmRegion};
 use crate::triple_buffer::TripleBufferProducer;
-use std::sync::atomic::Ordering;
+use std::sync::atomic::{AtomicU8, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 pub struct ShmPublisher {
@@ -120,7 +120,9 @@ impl ShmPublisher {
         true
     }
 
-    fn synchronized_frame_consumed(&self) -> bool {
+    /// Read-only readiness check for avoiding a GPU readback that would be discarded.
+    /// The actual publish still rechecks readiness and frame order before committing.
+    pub fn synchronized_frame_consumed(&self) -> bool {
         unsafe {
             let meta = self.meta_region.as_ref::<ShmMetaRegion>();
             let image_consumed = meta.image.state.load(Ordering::Acquire) & FLAG_NEW == 0;
@@ -204,7 +206,10 @@ impl ShmPublisher {
     pub fn publish_runtime_state(&mut self, state: RuntimeState) {
         unsafe {
             let meta = self.meta_region.as_mut::<ShmMetaRegion>();
-            meta.runtime_state = state;
+            meta.runtime_state.timestamp_ns = state.timestamp_ns;
+            meta.runtime_state.following = state.following;
+            AtomicU8::from_ptr(&raw mut meta.runtime_state.vision_mode)
+                .store(state.vision_mode, Ordering::Release);
         }
     }
 

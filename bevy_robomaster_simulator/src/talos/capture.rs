@@ -7,7 +7,7 @@ use crate::capture::{
     setup_capture_camera, setup_preview_window, sync_capture_camera,
 };
 use crate::components::{Controlled, InfantryGimbal, InfantryLaunchOffset, SubscribeAutoAim};
-use crate::systems::{ChassisObservationFrame, GameplaySystems};
+use crate::systems::{ChassisObservationFrame, GameplaySystems, VisionMode};
 use crate::talos::plugin::{M_ALIGN_MAT3, to_ros_quat, to_ros_translation};
 use bevy::ecs::world::DeferredWorld;
 use bevy::prelude::*;
@@ -139,6 +139,12 @@ impl GpuCaptureHandler for TalosSnapshotCreator {
         world: &World,
         _frame_id: Option<CaptureFrameId>,
     ) -> Option<Box<dyn SnapshotSync>> {
+        // Avoid GPU-to-CPU transfers and full-frame conversion while the client is busy.
+        // Keep the commit-time check too: asynchronous completions may race this hint.
+        let ctx = world.get_resource::<TalosCaptureContextShared>()?;
+        if !ctx.0.lock().ok()?.synchronized_frame_consumed() {
+            return None;
+        }
         // Timestamp, frame sequence and pose must come from the same ExtractSchedule snapshot.
         let extracted = world.get_resource::<ExtractedPoseData>()?;
         if !extracted.valid {
@@ -174,6 +180,7 @@ pub fn publish_talos_runtime_state_system(
     context: Option<Res<TalosCaptureContext>>,
     frame_stamp: Res<TalosFrameStamp>,
     following: Res<SubscribeAutoAim>,
+    vision_mode: Res<VisionMode>,
 ) {
     let Some(ctx) = context else {
         return;
@@ -183,7 +190,8 @@ pub fn publish_talos_runtime_state_system(
         publisher.publish_runtime_state(RuntimeState {
             timestamp_ns: frame_stamp.timestamp_ns,
             following: u8::from(following.load(Ordering::Acquire)),
-            _pad: [0; 55],
+            vision_mode: vision_mode.0,
+            _pad: [0; 54],
         });
     }
 }

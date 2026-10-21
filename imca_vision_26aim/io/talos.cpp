@@ -96,7 +96,8 @@ struct alignas(64) RuntimeState
 {
   uint64_t timestamp_ns;
   uint8_t following;
-  uint8_t pad[55];
+  uint8_t vision_mode;
+  uint8_t pad[54];
 };
 
 template <typename Meta, std::size_t Count>
@@ -143,6 +144,8 @@ static_assert(sizeof(TripleBuffer<GimbalCmd, 3>) == 192);
 static_assert(offsetof(ShmMetaRegion, camera_info) == 1728);
 static_assert(offsetof(ShmMetaRegion, chassis_observation) == 1856);
 static_assert(offsetof(ShmMetaRegion, runtime_state) == 3648);
+static_assert(offsetof(RuntimeState, vision_mode) == 9);
+static_assert(sizeof(RuntimeState) == 64);
 static_assert(sizeof(ShmMetaRegion) == META_SIZE);
 
 struct PoseIndex
@@ -303,6 +306,12 @@ TalosState TalosTransport::state() const
 {
   std::lock_guard<std::mutex> lock(mutex_);
   return state_;
+}
+
+uint8_t TalosTransport::vision_mode() const
+{
+  auto * meta = static_cast<ShmMetaRegion *>(meta_->data);
+  return std::atomic_ref<uint8_t>(meta->runtime_state.vision_mode).load(std::memory_order_acquire);
 }
 
 void TalosTransport::send(

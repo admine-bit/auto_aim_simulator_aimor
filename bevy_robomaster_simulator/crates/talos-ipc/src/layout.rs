@@ -263,16 +263,19 @@ impl Default for GroundTruthBatch {
 pub struct RuntimeState {
     pub timestamp_ns: u64,
     pub following: u8,
-    pub _pad: [u8; 55],
+    pub vision_mode: u8,
+    pub _pad: [u8; 54],
 }
 const _: () = assert!(size_of::<RuntimeState>() == 64);
+const _: () = assert!(std::mem::offset_of!(RuntimeState, vision_mode) == 9);
 
 impl Default for RuntimeState {
     fn default() -> Self {
         Self {
             timestamp_ns: 0,
             following: 0,
-            _pad: [0; 55],
+            vision_mode: 1,
+            _pad: [0; 54],
         }
     }
 }

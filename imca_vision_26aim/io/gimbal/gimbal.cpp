@@ -61,7 +61,11 @@ Gimbal::~Gimbal()
 // 获取当前云台工作模式
 GimbalMode Gimbal::mode() const
 {
-  if (talos_backend_) return GimbalMode::AUTO_AIM;
+  if (talos_backend_) {
+    const auto mode = talos_->vision_mode();
+    return mode <= static_cast<uint8_t>(GimbalMode::OUTPOST)
+      ? static_cast<GimbalMode>(mode) : GimbalMode::IDLE;
+  }
 
   std::lock_guard<std::mutex> lock(mutex_); // 使用互斥锁保护共享变量，确保线程安全
   return mode_;// 返回当前模式

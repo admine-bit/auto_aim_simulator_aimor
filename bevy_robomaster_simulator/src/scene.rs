@@ -83,6 +83,9 @@ async fn load_scene(w: AsyncWorld) {
     let assets = w
         .with_world(|world| world.resource::<AssetServer>().clone())
         .await;
+    let player_start = w
+        .with_world(|world| world.resource::<SimulationConfig>().scene.player_start.clone())
+        .await;
     let scene =
         |path: &'static str| WorldAssetRoot(assets.load(GltfAssetLabel::Scene(0).from_asset(path)));
 
@@ -119,18 +122,6 @@ async fn load_scene(w: AsyncWorld) {
     )
     .await;
     colliders_ready(&w, ground).await;
-
-    w.spawn(
-        scene("CALIB.glb"),
-        Transform::IDENTITY.with_translation(Vec3::new(1.0, 2.5, 1.0)),
-    )
-    .await;
-
-    w.spawn(
-        scene("CALIB.glb"),
-        Transform::IDENTITY.with_translation(Vec3::new(2.0, 0.5, 2.0)),
-    )
-    .await;
 
     let outpost = w
         .spawn(scene("OUTPOST.glb"), (RigidBody::Static, ScanOutpost))
@@ -245,7 +236,7 @@ async fn load_scene(w: AsyncWorld) {
         .spawn(
             scene("vehicle.glb"),
             (
-                Transform::from_xyz(0.0, 1.0, 0.0),
+                player_start.transform(),
                 Infantry::new(Team::Red, INFANTRY_THREE_CONFIG),
                 Controlled,
             ),

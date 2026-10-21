@@ -5,6 +5,7 @@ use crate::config::{GimbalAxisPidConfig, SimulationConfig};
 use crate::systems::ControllerState;
 
 const MANUAL_GIMBAL_OVERRIDE_SECONDS: f32 = 0.12;
+const TARGET_FILTER_SECONDS: f32 = 0.015;
 
 /// Absolute muzzle-frame aim target produced by an external auto-aim solver.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -53,6 +54,7 @@ impl AxisPid {
 #[derive(Component, Clone, Copy, Debug)]
 pub struct GimbalAimTracker {
     target: GimbalAimTarget,
+    filtered_target: GimbalAimTarget,
     yaw: AxisPid,
     pitch: AxisPid,
 }
@@ -61,6 +63,7 @@ impl GimbalAimTracker {
     pub fn new(target: GimbalAimTarget) -> Self {
         Self {
             target,
+            filtered_target: target,
             yaw: AxisPid::default(),
             pitch: AxisPid::default(),
         }
@@ -74,6 +77,15 @@ impl GimbalAimTracker {
     /// drives one continuous controller instead of restarting every message.
     pub fn retarget(&mut self, target: GimbalAimTarget) {
         self.target = target;
+    }
+
+    fn smoothed_target(&mut self, dt: f32) -> GimbalAimTarget {
+        // Suppress frame-to-frame solver noise while leaving the motor loop fast enough
+        // to follow the rotating rune. Wrap yaw to follow the shortest angular path.
+        let alpha = 1.0 - (-dt / TARGET_FILTER_SECONDS).exp();
+        self.filtered_target.yaw += wrap_angle(self.target.yaw - self.filtered_target.yaw) * alpha;
+        self.filtered_target.pitch += (self.target.pitch - self.filtered_target.pitch) * alpha;
+        self.filtered_target
     }
 }
 
@@ -171,7 +183,7 @@ pub fn gimbal_pid_controls(
     // Error is measured on the muzzle, so chassis motion shows up as tracking error
     // instead of being cancelled out by a one-shot correction.
     let error = tracking_error(
-        tracker.target().rotation(),
+        tracker.smoothed_target(dt).rotation(),
         gimbal_transform.rotation,
         gimbal_global.rotation(),
         muzzle.rotation(),
@@ -314,6 +326,26 @@ mod tests {
 
         assert_eq!(tracker.yaw.integral, integral);
         assert_eq!(tracker.target().yaw, 0.5);
+    }
+
+    #[test]
+    fn target_filter_tracks_fast_without_turning_the_long_way_at_yaw_wrap() {
+        let mut tracker = GimbalAimTracker::new(GimbalAimTarget {
+            yaw: 179.0_f32.to_radians(),
+            pitch: 0.0,
+        });
+        tracker.retarget(GimbalAimTarget {
+            yaw: -179.0_f32.to_radians(),
+            pitch: 0.2,
+        });
+        let first = tracker.smoothed_target(0.01);
+        assert!(first.yaw > 179.0_f32.to_radians());
+        assert!(first.pitch > 0.0 && first.pitch < 0.2);
+        for _ in 0..30 {
+            tracker.smoothed_target(0.01);
+        }
+        assert!(wrap_angle(tracker.filtered_target.yaw - tracker.target().yaw).abs() < 0.001);
+        assert!((tracker.filtered_target.pitch - 0.2).abs() < 0.001);
     }
 
     #[test]

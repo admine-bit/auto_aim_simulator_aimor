@@ -39,6 +39,7 @@ public:
   void read(cv::Mat & img, std::chrono::steady_clock::time_point & timestamp);
   Eigen::Quaterniond gimbal_q() const;
   TalosState state() const;
+  uint8_t vision_mode() const;
 
   void send(bool control, bool fire, double yaw, double yaw_vel, double yaw_acc, double pitch,
     double pitch_vel, double pitch_acc);

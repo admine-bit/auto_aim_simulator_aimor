@@ -8,6 +8,7 @@ import os
 import pty
 import select
 import shutil
+import signal
 import struct
 import subprocess
 import sys
@@ -19,6 +20,7 @@ import yaml
 META_SIZE = 3712
 POSE_BASE = 256
 GIMBAL_CMD_BASE = 1536
+VISION_MODE_OFFSET = 3648 + 9  # RuntimeState.vision_mode
 RX_FORMAT = "<BB4f6fBB"
 TX_FORMAT = "<BB6fB"
 RX_SIZE = struct.calcsize(RX_FORMAT)
@@ -53,31 +55,60 @@ def camera_calibration(meta):
     }
 
 
-def receive_frame(meta, gimbal_height_offset_m):
+class GimbalFeedback:
+    def __init__(self):
+        self.last_frame_seq = None
+        self.last_timestamp_ns = None
+        self.last_yaw = None
+        self.yaw_vel = 0.0
+
+    def update(self, frame_seq, timestamp_ns, yaw):
+        if frame_seq == self.last_frame_seq:
+            return self.yaw_vel
+        if self.last_timestamp_ns is not None:
+            dt = (timestamp_ns - self.last_timestamp_ns) * 1e-9
+            if 0.0 < dt <= 0.25:
+                yaw_delta = (yaw - self.last_yaw + math.pi) % (2.0 * math.pi) - math.pi
+                self.yaw_vel = yaw_delta / dt
+            else:
+                self.yaw_vel = 0.0
+        self.last_frame_seq = frame_seq
+        self.last_timestamp_ns = timestamp_ns
+        self.last_yaw = yaw
+        return self.yaw_vel
+
+
+def receive_frame(meta, gimbal_height_offset_m, feedback=None):
     gimbal = pose(meta, 0)
     odom = pose(meta, 1)
+    mode = meta[VISION_MODE_OFFSET]
+    if mode > 5:
+        mode = 0
     w, x, y, z = gimbal[4:8]
     yaw = math.atan2(2 * (w * z + x * y), 1 - 2 * (y * y + z * z))
     pitch = math.asin(max(-1.0, min(1.0, 2 * (w * y - z * x))))
+    yaw_vel = 0.0 if feedback is None else feedback.update(gimbal[0], gimbal[8], yaw)
     # The solver uses this z as the gimbal origin's world height. Keep the
     # simulator-side calibration offset explicit so it can be tuned per scene.
-    return struct.pack(RX_FORMAT, 0x5A, 1, w, x, y, z,
-                       yaw, 0.0, pitch, odom[1], odom[2],
+    return struct.pack(RX_FORMAT, 0x5A, mode, w, x, y, z,
+                       yaw, yaw_vel, pitch, odom[1], odom[2],
                        odom[3] + gimbal_height_offset_m,
                        1, 0xA5)
 
 
 def publish_command(meta, frame):
-    head, mode, yaw, yaw_vel, yaw_acc, pitch, pitch_vel, pitch_acc, tail = struct.unpack(
+    head, command_mode, yaw, yaw_vel, yaw_acc, pitch, pitch_vel, pitch_acc, tail = struct.unpack(
         TX_FORMAT, frame)
-    if head != 0x5A or tail != 0xA5 or mode > 2 or not all(map(math.isfinite,
+    if head != 0x5A or tail != 0xA5 or command_mode > 2 or not all(map(math.isfinite,
                                                                     (yaw, pitch))):
         return
+    if meta[VISION_MODE_OFFSET] == 0:
+        command_mode = 0
     write_index = meta[GIMBAL_CMD_BASE + 1]
     base = GIMBAL_CMD_BASE + 64 + write_index * 32
     struct.pack_into("<QfffB11x", meta, base, time.time_ns(),
                      math.degrees(yaw), -(90.0 + math.degrees(pitch)),
-                     1.0 if mode else -1.0, 1 if mode == 2 else 0)
+                     1.0 if command_mode else -1.0, 1 if command_mode == 2 else 0)
     previous = meta[GIMBAL_CMD_BASE]
     meta[GIMBAL_CMD_BASE] = write_index | 0x80
     meta[GIMBAL_CMD_BASE + 1] = previous & 0x03
@@ -88,6 +119,7 @@ def run(args):
         raise RuntimeError("云台高度补偿必须是有限数字")
     source = Path(args.source).resolve(strict=True)
     runtime = Path(args.runtime).resolve()
+    vision_workdir = Path(args.vision_workdir or runtime).resolve(strict=True)
     runtime.mkdir(parents=True, exist_ok=True)
     for name in ("assets", "model", "rm_vision_core-main"):
         target = runtime / name
@@ -116,20 +148,30 @@ def run(args):
         generated.write_text(yaml.safe_dump(config, allow_unicode=True, sort_keys=False))
         env = os.environ.copy()
         env["LD_PRELOAD"] = args.shim + (":" + env["LD_PRELOAD"] if env.get("LD_PRELOAD") else "")
-        env["IMCA_VISION_DEBUG_WINDOWS"] = "0"
-        vision = subprocess.Popen([args.vision, str(generated)], cwd=runtime, env=env)
+        env["IMCA_VISION_DEBUG_WINDOWS"] = "1"
+        vision = subprocess.Popen([args.vision, str(generated)], cwd=vision_workdir, env=env)
         os.close(slave)
         os.set_blocking(master, False)
         pending = bytearray()
+        gimbal_feedback = GimbalFeedback()
         last_status = time.monotonic()
+        stop_requested = False
+
+        def request_stop(_signum, _frame):
+            nonlocal stop_requested
+            stop_requested = True
+
+        previous_sigint = signal.signal(signal.SIGINT, request_stop)
+        previous_sigterm = signal.signal(signal.SIGTERM, request_stop)
         print(f"[legacy-bridge] serial={slave_path}, vision_pid={vision.pid}, "
               f"gimbal_height_offset_m={args.gimbal_height_offset_m:+.3f}", flush=True)
         try:
-            while vision.poll() is None:
+            while not stop_requested and vision.poll() is None:
                 now = time.monotonic()
                 if now - last_status >= 0.01:
                     try:
-                        os.write(master, receive_frame(meta, args.gimbal_height_offset_m))
+                        os.write(master, receive_frame(meta, args.gimbal_height_offset_m,
+                                                       gimbal_feedback))
                     except (BlockingIOError, OSError):
                         pass
                     last_status = now
@@ -152,22 +194,32 @@ def run(args):
                         continue
                     publish_command(meta, pending[:TX_SIZE])
                     del pending[:TX_SIZE]
-            return vision.returncode
         finally:
             if vision.poll() is None:
-                vision.terminate()
+                # Let the vision program leave its loop and close VideoWriter.
+                vision.send_signal(signal.SIGINT)
                 try:
-                    vision.wait(timeout=5)
+                    vision.wait(timeout=10)
                 except subprocess.TimeoutExpired:
-                    vision.kill()
-                    vision.wait()
+                    print("[legacy-bridge] vision did not exit after SIGINT; sending SIGTERM",
+                          file=sys.stderr, flush=True)
+                    vision.terminate()
+                    try:
+                        vision.wait(timeout=5)
+                    except subprocess.TimeoutExpired:
+                        vision.kill()
+                        vision.wait()
             os.close(master)
+            signal.signal(signal.SIGINT, previous_sigint)
+            signal.signal(signal.SIGTERM, previous_sigterm)
+        return vision.returncode
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--source", required=True)
     parser.add_argument("--runtime", required=True)
+    parser.add_argument("--vision-workdir", help="working directory for vision outputs")
     parser.add_argument("--vision", required=True)
     parser.add_argument("--shim", required=True)
     parser.add_argument("--gimbal-height-offset-m", type=float, default=0.0)

@@ -68,7 +68,8 @@ impl PowerRuneVisuals {
         state: &MechanismState,
         appearance: &mut StatefulAppearance,
     ) {
-        self.root.set(state.root_activation(), appearance);
+        // The centre R marker stays illuminated independently of blade activation.
+        self.root.set(Activation::Activated, appearance);
         for (target, activation) in self.targets.iter_mut().zip(state.target_states()) {
             target.apply(mode, activation, appearance);
         }

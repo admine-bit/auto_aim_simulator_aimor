@@ -124,8 +124,15 @@ cd <repo-root>/bevy_robomaster_simulator
 DAEDALUS_AUTO_AIM=1 cargo run --release
 ```
 
+仿真窗口内按数字键 `0`–`5` 可向视觉端发送击打模式：空闲、自瞄、小符、大符、
+远距离自瞄、前哨站，默认自瞄。`F5` 仅切换仿真云台是否跟随视觉指令；
+使用 `standard_mpc` 等支持对应模式的视觉入口验证切换效果。
+小符和大符模式下，本帧 Buff 扇叶中心与 R 中心都有效时，程序每秒输出一次
+`buff=(x, y) R=(x, y) px`。`IMCA_TALOS_SIMULATOR=1` 时打符解算使用默认
+1440×1080、垂直视场角 45° 的仿真相机标定；更改仿真相机参数后需同步更新打符解算标定。
+
 两端通过 `/tmp/talos_ipc_meta` 和 `/tmp/talos_ipc_image_pool` 通信，应先启动仿真器再启动视觉程序。
-一键脚本默认启动 `auto_aim_debug_mpc`；也可以通过 `--program` 指定 `standard_mpc` 或项目外的其他程序。脚本默认关闭源码 OpenCV 调试窗口，避免其抢走仿真器键盘焦点；需要调试画面时设置 `IMCA_VISION_DEBUG_WINDOWS=1`。打符和实车 CAN/串口设备不在此仿真适配范围内。
+一键脚本默认启动支持模式切换的 `standard_mpc`；也可以通过 `--program` 指定其他视觉程序。脚本默认关闭源码 OpenCV 调试窗口，避免其抢走仿真器键盘焦点；需要调试画面时设置 `IMCA_VISION_DEBUG_WINDOWS=1`。实车 CAN/串口设备不在此仿真适配范围内。
 
 4. 注册自启：
     1. 确保已安装`screen`:

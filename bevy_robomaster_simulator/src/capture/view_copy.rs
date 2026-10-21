@@ -92,6 +92,9 @@ impl ViewTextureCopyPlugin {
         height: u32,
         camera_order: isize,
     ) -> (Self, Handle<Image>) {
+        if camera_order == crate::capture::CAPTURE_CAMERA_ORDER {
+            app.insert_resource(crate::capture::CaptureDepthPrepassRequired);
+        }
         let depth_texture = create_capture_image_handle(
             app,
             width,

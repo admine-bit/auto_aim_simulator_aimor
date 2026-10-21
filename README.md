@@ -1,5 +1,7 @@
 感谢河北科技大学仿真开源，该仓库提供给战队内部成员学习使用。
 
+联调问题与进度统一维护在[未解决问题清单](未解决问题清单.md)；修复、发现新问题或问题复发时更新该清单。
+
 ## 本机编译与运行（Ubuntu 24.04）
 
 环境已配置为 Rust 1.98.1、Bevy 0.19、OpenVINO 2024.6.0 CPU 推理，仿真与视觉通过
@@ -37,7 +39,9 @@ cd bevy_robomaster_simulator
 cargo run --release --locked --bin daedalus
 ```
 
-`F3` 切换视角，`F5` 切换自瞄，`Esc` 释放鼠标。一键启动默认关闭视觉调试窗口；
+`F3` 切换视角，`F5` 切换视觉控制云台，数字键 `0`–`5` 选择视觉击打模式
+（`0` 空闲、`1` 自瞄、`2` 小符、`3` 大符、`4` 远距离自瞄、`5` 前哨站；默认 `1`），
+`Esc` 释放鼠标。一键启动默认关闭视觉调试窗口；
 需要时使用 `IMCA_VISION_DEBUG_WINDOWS=1 ./bevy_robomaster_simulator/start_simulation.sh`。
 终端按 `Ctrl+C` 停止联调程序。
 

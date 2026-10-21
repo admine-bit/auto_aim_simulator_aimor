@@ -4,6 +4,7 @@
 # Rendering present mode. Use `auto_no_vsync` to exceed 60Hz for Talos/ROS2 capture.
 # Options: auto_vsync, auto_no_vsync, fifo, fifo_relaxed, mailbox, immediate
 present_mode = "auto_no_vsync"
+max_fps = 100 # 为视觉提供最高 100 FPS 图像并压缩仿真占用；需更高采样率时调大，0 表示不限帧
 
 [debug]
 # Turn these on only when needed; they noticeably reduce FPS.
@@ -13,7 +14,7 @@ inspector = false
 diagnostics = true
 
 [preview]
-# On-screen preview camera. Disable to avoid rendering the scene twice (preview + capture).
+# On-screen preview: blits the captured image when Talos capture is active.
 enabled = true
 
 [render]
@@ -31,6 +32,16 @@ metalfx_scale = 2.0
 illuminance = 500.0
 
 [scene]
+# 红方受控车体的启动姿态，来自 2026-10-20 用户要求记录的当前位置。
+# 坐标使用 Bevy 世界系（米，Y 向上）；旋转和云台角度使用弧度。
+# 同帧快照 frame_seq=24582；世界云台 yaw=-141.228875°、仰角=28.551714°。
+# 保留记录时车体姿态，以下云台角已扣除车体朝向和模型固定安装角。
+[scene.player_start]
+position = [-4.19766426, -0.00943226, -4.59034204] # 更换识别位置时，修改车体 X/Y/Z 坐标
+rotation = [0.0, 0.08989542, 0.0]                 # 更换车体朝向时，修改绕 X/Y/Z 轴的角度
+gimbal_yaw = -2.55480424                          # 更换云台相对水平朝向时修改
+gimbal_pitch = 0.06198917                         # 更换云台相对俯仰角时修改
+
 # Optional custom glTF/GLB models loaded at startup. Paths are relative to assets/.
 # Repeat [[scene.models]] to load multiple models. Restart the simulator after editing this list.
 #
@@ -82,18 +93,18 @@ acceleration_exponent = 2.5    # exponent for non-linear acceleration curve
 # Closed-loop tracking of external auto-aim (Talos/ROS2) gimbal commands.
 # Yaw and pitch are independent loops with independent gains.
 [vehicle.gimbal_pid.yaw]
-kp = 4.0
+kp = 40.0
 ki = 0.0
 kd = 0.0
 integral_limit = 0.5            # rad*s - anti-windup bound on the integral term
-max_rate = 3.0                 # rad/s - saturation of the commanded yaw rate
+max_rate = 5.0                 # rad/s - saturation of the commanded yaw rate
 
 [vehicle.gimbal_pid.pitch]
-kp = 4.0
+kp = 40.0
 ki = 0.0
 kd = 0.0
 integral_limit = 0.5            # rad*s - anti-windup bound on the integral term
-max_rate = 3.0                 # rad/s - saturation of the commanded pitch rate
+max_rate = 5.0                 # rad/s - saturation of the commanded pitch rate
 
 [mecanum]
 wheel_radius_m = 0.076          # wheel radius (m)
@@ -121,3 +132,10 @@ fov = 45.0                      # degrees - field of view
 free_move_speed = 8.0           # m/s - free camera movement speed
 follow_offset = [0.0, 3.0, 2.0] # follow camera offset
 mouse_sensitivity = 0.001       # mouse sensitivity for the player gimbal and free camera
+
+[ballistic_hud]
+enabled = true                 # 第一视角默认显示弹道辅助；需要纯净预览时关闭，也可按 H 临时切换
+automatic_range = true         # 用准星射线测距；固定距离校准时改为 false，也可按 T 切换
+manual_range_m = 5.0            # 手动距离及准星未测到碰撞体时的参考距离（米）；PgUp/PgDn 临时调整
+max_range_m = 50.0              # 测距及手动距离上限（米）；需要校准更远目标时调大
+range_step_m = 0.5              # PgUp/PgDn 每次调整的米数；按住 Shift 时使用十分之一步长

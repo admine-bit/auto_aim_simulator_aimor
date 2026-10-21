@@ -24,13 +24,23 @@ fi
 SIMULATOR_DIR="${SIMULATOR_DIR:-${SCRIPT_DIR}}"
 SIMULATOR_BIN="${SIMULATOR_BIN:-}"
 SIMULATOR_LIB_DIR="${SIMULATOR_LIB_DIR:-}"
-PROGRAM_PATH="${PROGRAM_PATH:-${PROJECT_ROOT}/imca_vision_26aim/build/auto_aim_debug_mpc}"
+PROGRAM_PATH="${PROGRAM_PATH:-${PROJECT_ROOT}/imca_vision_26aim/build/standard_mpc}"
 PROGRAM_WORKDIR="${PROGRAM_WORKDIR:-${PROJECT_ROOT}/imca_vision_26aim}"
 PROGRAM_ARGS=("configs/sentry.yaml")
 CARGO_BIN="${CARGO_BIN:-cargo}"
 AUTO_AIM="${AUTO_AIM:-0}"
 IMCA_VISION_DEBUG_WINDOWS="${IMCA_VISION_DEBUG_WINDOWS:-0}"
 IPC_TIMEOUT_SECONDS="${IPC_TIMEOUT_SECONDS:-30}"
+# 留空不限制仿真核心；默认联调入口会按物理核心自动填写。
+SIMULATOR_CPU_SET="${SIMULATOR_CPU_SET:-}"
+# 留空不限制客户端核心；需要隔离视觉与仿真时由入口脚本填写。
+PROGRAM_CPU_SET="${PROGRAM_CPU_SET:-}"
+# 降低仿真普通调度优先级以给桌面和视觉留余量；0 表示不降低。
+SIMULATOR_NICE="${SIMULATOR_NICE:-0}"
+# 红方符转动方式：small 小符 / large 大符；默认联调入口会传入其顶部配置。
+RED_RUNE_MODE="${RED_RUNE_MODE:-large}"
+# 蓝方符转动方式：small 小符 / large 大符；需要独立切换蓝方时修改。
+BLUE_RUNE_MODE="${BLUE_RUNE_MODE:-large}"
 # =====================
 
 META_FILE="/tmp/talos_ipc_meta"
@@ -58,9 +68,10 @@ usage() {
 
 默认启动：
   仿真器目录：当前脚本所在目录
-  客户端程序：../imca_vision_26aim/build/auto_aim_debug_mpc
+  客户端程序：../imca_vision_26aim/build/standard_mpc
   程序工作目录：../imca_vision_26aim
   程序参数：configs/sentry.yaml
+  红/蓝机关模式：顶部 RED_RUNE_MODE / BLUE_RUNE_MODE 配置，small 小符 / large 大符
   视觉调试窗口：默认关闭（设置 IMCA_VISION_DEBUG_WINDOWS=1 可开启）
 
 选项：
@@ -74,7 +85,7 @@ usage() {
   -h, --help               显示帮助
 
 示例：
-  # 启动项目内默认 auto_aim_debug_mpc
+  # 启动项目内默认 standard_mpc
   ./start_simulation.sh
 
   # 启动项目外的程序
@@ -150,6 +161,14 @@ done
 [[ -d "$PROGRAM_WORKDIR" ]] || die "程序工作目录不存在：$PROGRAM_WORKDIR"
 [[ "$IPC_TIMEOUT_SECONDS" =~ ^[0-9]+$ ]] || die "IPC_TIMEOUT_SECONDS 必须是非负整数：$IPC_TIMEOUT_SECONDS"
 [[ "$IMCA_VISION_DEBUG_WINDOWS" == "0" || "$IMCA_VISION_DEBUG_WINDOWS" == "1" ]] || die "IMCA_VISION_DEBUG_WINDOWS 必须是 0 或 1：$IMCA_VISION_DEBUG_WINDOWS"
+for rune_variable in RED_RUNE_MODE BLUE_RUNE_MODE; do
+  case "${!rune_variable}" in
+    small|large) ;;
+    *) die "$rune_variable 必须是 small 或 large，实际为：${!rune_variable}" ;;
+  esac
+done
+export DAEDALUS_RED_RUNE_MODE="$RED_RUNE_MODE"
+export DAEDALUS_BLUE_RUNE_MODE="$BLUE_RUNE_MODE"
 SIMULATOR_DIR="$(cd -- "$SIMULATOR_DIR" && pwd -P)"
 
 if [[ "$PROGRAM_PATH" != /* ]]; then
@@ -165,6 +184,13 @@ elif [[ "$SIMULATOR_BIN" != /* ]]; then
 fi
 command -v stat >/dev/null 2>&1 || die "找不到 stat 命令"
 command -v od >/dev/null 2>&1 || die "找不到 od 命令"
+[[ "$SIMULATOR_NICE" =~ ^[0-9]+$ ]] && ((SIMULATOR_NICE <= 19)) || die "SIMULATOR_NICE 必须为 0～19"
+for cpu_set in "$SIMULATOR_CPU_SET" "$PROGRAM_CPU_SET"; do
+  if [[ -n "$cpu_set" ]]; then
+    command -v taskset >/dev/null 2>&1 || die "找不到 taskset 命令"
+    taskset -c "$cpu_set" true || die "无效或不可用的 CPU 集合：$cpu_set"
+  fi
+done
 
 if [[ "$AUTO_AIM" == "1" ]]; then
   export DAEDALUS_AUTO_AIM=1
@@ -195,13 +221,28 @@ stop_group() {
   kill -TERM -- "-$pid" 2>/dev/null || kill -TERM "$pid" 2>/dev/null || true
 }
 
+stop_program() {
+  local pid="$1"
+  local deadline=$((SECONDS + 10))
+
+  # 视觉程序用 SIGINT 结束主循环，录制器析构时才会写完 AVI 索引。
+  kill -INT -- "-$pid" 2>/dev/null || kill -INT "$pid" 2>/dev/null || true
+  while kill -0 "$pid" 2>/dev/null && ((SECONDS < deadline)); do
+    sleep 0.1
+  done
+  if kill -0 "$pid" 2>/dev/null; then
+    log "客户端未在 10 秒内退出，发送 SIGTERM（PID ${pid}）" >&2
+    stop_group "$pid"
+  fi
+}
+
 cleanup() {
   local status=$?
   trap - EXIT INT TERM
 
   if [[ -n "$PROGRAM_PID" ]] && kill -0 "$PROGRAM_PID" 2>/dev/null; then
     log "停止客户端程序（PID ${PROGRAM_PID}）"
-    stop_group "$PROGRAM_PID"
+    stop_program "$PROGRAM_PID"
   fi
 
   if ((SIMULATOR_STARTED == 1)) && [[ -n "$SIMULATOR_PID" ]] && kill -0 "$SIMULATOR_PID" 2>/dev/null; then
@@ -218,6 +259,19 @@ trap cleanup EXIT
 
 existing_simulator_pid="$(find_existing_simulator)"
 if [[ -n "$existing_simulator_pid" ]]; then
+  # Startup selections cannot change an already-running ECS world. Never silently reuse
+  # an instance with different selections, or an old binary without these launch settings.
+  [[ -r "/proc/${existing_simulator_pid}/environ" ]] || die "无法核对已有仿真器的符模式，请关闭旧仿真后重新启动"
+  running_red_rune_mode=""
+  running_blue_rune_mode=""
+  while IFS= read -r -d '' launch_setting; do
+    case "$launch_setting" in
+      DAEDALUS_RED_RUNE_MODE=*) running_red_rune_mode="${launch_setting#*=}" ;;
+      DAEDALUS_BLUE_RUNE_MODE=*) running_blue_rune_mode="${launch_setting#*=}" ;;
+    esac
+  done < "/proc/${existing_simulator_pid}/environ"
+  [[ "$running_red_rune_mode" == "$RED_RUNE_MODE" && "$running_blue_rune_mode" == "$BLUE_RUNE_MODE" ]] || \
+    die "已有仿真器的红/蓝符模式为 ${running_red_rune_mode:-未知}/${running_blue_rune_mode:-未知}，本次要求 ${RED_RUNE_MODE}/${BLUE_RUNE_MODE}；请关闭旧仿真后重新启动"
   SIMULATOR_PID="$existing_simulator_pid"
   log "检测到已运行的 Daedalus（PID ${SIMULATOR_PID}），复用现有仿真器"
   if [[ "$AUTO_AIM" == "1" ]]; then
@@ -227,6 +281,7 @@ if [[ -n "$existing_simulator_pid" ]]; then
   fi
 else
   log "启动 Daedalus：$SIMULATOR_DIR"
+  log "机关启动模式：红方=${RED_RUNE_MODE}，蓝方=${BLUE_RUNE_MODE}；视觉初始模式跟随红方"
   # 没有正在运行的仿真器时，清理上一次运行留下的精确 IPC 文件，避免误判为已就绪。
   rm -f -- "$META_FILE" "$IMAGE_POOL_FILE"
   (
@@ -258,6 +313,11 @@ else
       log "未找到已编译仿真器，使用 cargo 构建并启动"
       simulator_command=("$CARGO_BIN" run --release)
     fi
+    simulator_command=(nice -n "$SIMULATOR_NICE" "${simulator_command[@]}")
+    if [[ -n "$SIMULATOR_CPU_SET" ]]; then
+      simulator_command=(taskset -c "$SIMULATOR_CPU_SET" "${simulator_command[@]}")
+    fi
+    log "仿真 CPU 集合：${SIMULATOR_CPU_SET:-不限制}；nice=${SIMULATOR_NICE}"
     if command -v setsid >/dev/null 2>&1; then
       exec setsid "${simulator_command[@]}"
     else
@@ -290,10 +350,15 @@ log "参数：${PROGRAM_ARGS[*]:-(无)}"
 log "视觉调试窗口：$([[ "$IMCA_VISION_DEBUG_WINDOWS" == "1" ]] && printf '开启' || printf '关闭')"
 (
   cd -- "$PROGRAM_WORKDIR"
+  program_command=("$PROGRAM_PATH" "${PROGRAM_ARGS[@]}")
+  if [[ -n "$PROGRAM_CPU_SET" ]]; then
+    program_command=(taskset -c "$PROGRAM_CPU_SET" "${program_command[@]}")
+  fi
+  log "客户端 CPU 集合：${PROGRAM_CPU_SET:-不限制}"
   if command -v setsid >/dev/null 2>&1; then
-    exec setsid "$PROGRAM_PATH" "${PROGRAM_ARGS[@]}"
+    exec setsid "${program_command[@]}"
   else
-    exec "$PROGRAM_PATH" "${PROGRAM_ARGS[@]}"
+    exec "${program_command[@]}"
   fi
 ) &
 PROGRAM_PID=$!
@@ -302,10 +367,14 @@ while kill -0 "$PROGRAM_PID" 2>/dev/null; do
   if [[ -n "$SIMULATOR_PID" ]] && ! kill -0 "$SIMULATOR_PID" 2>/dev/null; then
     SIMULATOR_STATUS=0
     wait "$SIMULATOR_PID" 2>/dev/null || SIMULATOR_STATUS=$?
-    log "ERROR: Daedalus 已退出（status ${SIMULATOR_STATUS}），停止客户端程序（PID ${PROGRAM_PID}）" >&2
-    stop_group "$PROGRAM_PID"
+    if ((SIMULATOR_STATUS == 0)); then
+      log "Daedalus 已退出，停止客户端程序（PID ${PROGRAM_PID}）"
+    else
+      log "ERROR: Daedalus 已退出（status ${SIMULATOR_STATUS}），停止客户端程序（PID ${PROGRAM_PID}）" >&2
+    fi
+    stop_program "$PROGRAM_PID"
     wait "$PROGRAM_PID" 2>/dev/null || true
-    exit 1
+    if ((SIMULATOR_STATUS == 0)); then exit 0; else exit 1; fi
   fi
   sleep 0.2
 done

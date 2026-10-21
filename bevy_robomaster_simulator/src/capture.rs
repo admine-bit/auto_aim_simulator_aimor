@@ -18,6 +18,10 @@ pub struct CaptureSource;
 #[derive(Component)]
 pub struct CaptureCamera;
 
+/// Installed only when a depth subscriber copies this color camera's prepass.
+#[derive(Resource)]
+pub(super) struct CaptureDepthPrepassRequired;
+
 #[derive(Resource, Deref, Clone)]
 pub struct ImageHandle(pub Handle<Image>);
 
@@ -45,6 +49,7 @@ pub fn setup_capture_camera(world: &mut World) {
             frame_generation: config.render.metalfx_frame_generation,
         });
 
+    let needs_depth_prepass = world.contains_resource::<CaptureDepthPrepassRequired>();
     let mut capture_camera = world.spawn((
         Camera3d::default(),
         Tonemapping::None,
@@ -61,9 +66,11 @@ pub fn setup_capture_camera(world: &mut World) {
             ..default()
         }),
         Msaa::Off,
-        DepthPrepass,
         CaptureCamera,
     ));
+    if needs_depth_prepass {
+        capture_camera.insert(DepthPrepass);
+    }
     if let Some(metalfx) = metalfx {
         capture_camera.insert(metalfx);
     }

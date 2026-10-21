@@ -169,11 +169,14 @@ int MV_CC_GetImageBuffer(void *handle, MV_FRAME_OUT *frame, unsigned int timeout
       if (seq && width == kWidth && height == kHeight && pool_id < 3) {
         const uint8_t *rgb = camera.pool + pool_id * kPixels * 3;
         for (size_t y = 0; y < kHeight; ++y) {
-          for (size_t x = 0; x < kWidth; ++x) {
-            const size_t p = y * kWidth + x;
-            const size_t channel = (y % 2) ? ((x % 2) ? 2 : 1)
-                                                   : ((x % 2) ? 1 : 0);
-            camera.bayer[p] = rgb[p * 3 + channel];
+          const uint8_t *row = rgb + y * kWidth * 3;
+          uint8_t *out = camera.bayer.data() + y * kWidth;
+          // Keep the exact RG/GB Bayer pattern, with no per-pixel parity branch.
+          const size_t even_channel = (y % 2) ? 1 : 0;
+          const size_t odd_channel = (y % 2) ? 2 : 1;
+          for (size_t x = 0; x < kWidth; x += 2) {
+            out[x] = row[x * 3 + even_channel];
+            out[x + 1] = row[(x + 1) * 3 + odd_channel];
           }
         }
       }

@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <cstdlib>
 #include <limits>
 #include <utility>
 #include <vector>
@@ -660,6 +661,23 @@ Solver::Solver(const std::string & config_path) : R_gimbal2world_(Eigen::Matrix3
   Eigen::Matrix<double, 1, 5> distort_coeffs(distort_coeffs_data.data());
   cv::eigen2cv(camera_matrix, camera_matrix_);
   cv::eigen2cv(distort_coeffs, distort_coeffs_);
+
+  // The simulator renders a 1440x1080, 45-degree vertical-FOV optical image.
+  // Its camera and gimbal frames differ from the physical sentry calibration.
+  const char * simulator = std::getenv("IMCA_TALOS_SIMULATOR");
+  if (simulator != nullptr && std::string(simulator) == "1") {
+    constexpr double height = 1080.0;
+    const double focal = height / (2.0 * std::tan(CV_PI / 8.0));
+    camera_matrix_ = (cv::Mat_<double>(3, 3) << focal, 0.0, 719.5,
+      0.0, focal, 539.5,
+      0.0, 0.0, 1.0);
+    distort_coeffs_ = cv::Mat::zeros(1, 5, CV_64F);
+    R_gimbal2imubody_ = Eigen::Matrix3d::Identity();
+    R_camera2gimbal_ << 0.0, 0.0, 1.0,
+      -1.0, 0.0, 0.0,
+      0.0, -1.0, 0.0;
+    t_camera2gimbal_ = Eigen::Vector3d(0.137379, 0.002017, 0.152579);
+  }
 
   // 可选配置：五点 PnP 质量门限，旧 yaml 未写时使用默认值。
   if (yaml["buff_pnp_max_rmse_px"]) {

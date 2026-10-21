@@ -13,6 +13,20 @@ use crate::robomaster::prelude::Projectile;
 use crate::statistic::ProjectileStatistics;
 use crate::systems::{ControllerState, request_controller_rumble};
 
+/// Shared with the HUD so its prediction starts at exactly the actual launch position.
+pub(crate) fn projectile_launch_geometry(
+    infantry: &Transform,
+    gimbal: &GlobalTransform,
+    launch_offset: &Transform,
+) -> (Vec3, Vec3) {
+    (
+        infantry.translation + gimbal.rotation() * launch_offset.translation,
+        (gimbal.rotation() * launch_offset.rotation)
+            .mul_vec3(Vec3::Y)
+            .normalize_or_zero(),
+    )
+}
+
 pub fn setup_projectile(
     mut commands: Commands,
     config: Res<SimulationConfig>,
@@ -62,9 +76,7 @@ pub fn projectile_launch(
     cooldown.reset();
 
     stats.increase_launch();
-    let direction = (gimbal.0.rotation() * launch_offset.rotation)
-        .mul_vec3(Vec3::Y)
-        .normalize_or_zero();
+    let (origin, direction) = projectile_launch_geometry(infantry.0, gimbal.0, &launch_offset);
     if direction == Vec3::ZERO {
         return;
     }
@@ -81,9 +93,7 @@ pub fn projectile_launch(
         MeshMaterial3d(setting.1.clone()),
         LinearVelocity(vel),
         AngularVelocity(infantry.2.0),
-        Transform::IDENTITY.with_translation(
-            infantry.0.translation + (gimbal.0.rotation() * launch_offset.translation),
-        ),
+        Transform::IDENTITY.with_translation(origin),
         ProjectileLifetime(Timer::from_seconds(
             config.projectile.lifetime,
             TimerMode::Once,

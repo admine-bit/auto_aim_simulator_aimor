@@ -2,6 +2,7 @@
 mod capture;
 mod components;
 mod config;
+mod frame_pacing;
 mod handler;
 mod robomaster;
 mod scene;
@@ -17,7 +18,9 @@ mod ros2;
 mod talos;
 
 use avian3d::prelude::*;
+use bevy::app::{TaskPoolOptions, TaskPoolPlugin};
 use bevy::diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin};
+use bevy::ecs::schedule::{ScheduleLabel, SingleThreadedExecutor};
 use bevy::prelude::*;
 use bevy::render::settings::{InstanceFlags, RenderCreation, WgpuSettings, WgpuSettingsPriority};
 use bevy::render::{RenderPlugin, RenderSystems};
@@ -40,8 +43,9 @@ use crate::systems::{
     following_controls, freecam_controls, gimbal_controls, gimbal_pid_controls,
     projectile_aerodynamics, projectile_launch, remote_gimbal_controls, remote_vehicle_controls,
     sample_gamepad_controller, sample_keyboard_controller, sample_mouse_controller,
-    screenshot_on_f2, screenshot_saving, setup_projectile, switch_slapper_control, uav_launch,
-    update_auto_aim_subscription, update_chassis_observation, update_help_text, vehicle_controls,
+    screenshot_on_f2, screenshot_saving, select_vision_mode, setup_projectile,
+    switch_slapper_control, uav_launch, update_auto_aim_subscription,
+    update_chassis_observation, update_help_text, vehicle_controls, VisionMode,
 };
 use bevy_metalfx::MetalFxPlugin;
 
@@ -116,8 +120,19 @@ fn main() {
         PresentMode::AutoNoVsync
     });
     let mut app = App::new();
+    let task_pool_options = std::env::var("DAEDALUS_TASK_THREADS")
+        .ok()
+        .map(|value| {
+            let threads = value
+                .parse::<usize>()
+                .expect("DAEDALUS_TASK_THREADS must be an integer");
+            assert!(threads >= 3, "DAEDALUS_TASK_THREADS must be >= 3");
+            TaskPoolOptions::with_num_threads(threads)
+        })
+        .unwrap_or_default();
     app.add_plugins((
         DefaultPlugins
+            .set(TaskPoolPlugin { task_pool_options })
             .set(WindowPlugin {
                 primary_window: Some(Window {
                     present_mode,
@@ -130,6 +145,7 @@ fn main() {
         PhysicsPlugins::default(),
     ));
     app.insert_resource(WinitSettings::continuous());
+    app.add_plugins(frame_pacing::FramePacingPlugin);
 
     if config.debug.egui {
         app.add_plugins(EguiPlugin::default());
@@ -139,6 +155,7 @@ fn main() {
     }
 
     app.add_plugins(RoboMasterPlugins)
+        .add_plugins(systems::BallisticHudPlugin)
         .add_plugins(MetalFxPlugin)
         .add_plugins(crate::scene::ScenePlugin)
         .add_plugins(ConfigPlugin)
@@ -147,6 +164,7 @@ fn main() {
         .init_resource::<ChassisObservationFrame>()
         .init_resource::<PreviousKinematicState>()
         .init_resource::<ControllerState>()
+        .init_resource::<VisionMode>()
         .register_type::<ProjectileStatistics>()
         .insert_resource(Gravity(Vec3::NEG_Y * 9.81))
         .insert_resource(SubstepCount(config.physics.substep_count))
@@ -180,6 +198,7 @@ fn main() {
                     clear_controller_input,
                     cursor_capture_controls,
                     sample_keyboard_controller,
+                    select_vision_mode,
                     sample_mouse_controller,
                     sample_gamepad_controller,
                     update_auto_aim_subscription,
@@ -261,6 +280,27 @@ fn main() {
                 "talos integration skipped: ROS2 capture already active \
                  (set DAEDALUS_FORCE_TALOS_CAPTURE=1 to override)"
             );
+        }
+    }
+
+    // On a small reserved CPU set, dispatching every short ECS system to workers costs more
+    // than running it in order. Parallel GPU submission and asynchronous readback stay enabled.
+    if std::env::var("DAEDALUS_SERIAL_SCHEDULES").as_deref() == Ok("1") {
+        for label in [
+            First.intern(),
+            PreUpdate.intern(),
+            Update.intern(),
+            PostUpdate.intern(),
+            Last.intern(),
+            FixedFirst.intern(),
+            FixedPreUpdate.intern(),
+            FixedUpdate.intern(),
+            FixedPostUpdate.intern(),
+            FixedLast.intern(),
+        ] {
+            app.edit_schedule(label, |schedule| {
+                schedule.set_executor(SingleThreadedExecutor::new());
+            });
         }
     }
 

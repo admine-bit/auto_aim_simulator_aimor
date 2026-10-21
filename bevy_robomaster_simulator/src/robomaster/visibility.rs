@@ -3,7 +3,7 @@ use bevy::app::App;
 use bevy::asset::AssetId;
 use bevy::color::LinearRgba;
 use bevy::ecs::system::lifetimeless::{Read, Write};
-use bevy::prelude::{Children, Plugin, Resource};
+use bevy::prelude::{Children, Color, Plugin, Resource};
 use bevy::{
     asset::{Assets, Handle},
     camera::visibility::Visibility,
@@ -136,6 +136,8 @@ impl MaterialCache {
             return handle.clone();
         };
         let mut clone = original.clone();
+        // Unlit rune strips match the neutral backing instead of keeping a team tint.
+        clone.base_color = Color::srgb(0.125, 0.125, 0.125);
         clone.emissive = LinearRgba::BLACK;
         clone.emissive_exposure_weight = 0.0;
         let muted_handle = materials.add(clone);

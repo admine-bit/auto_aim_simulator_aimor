@@ -1,4 +1,5 @@
 #include <chrono>
+#include <cmath>
 #include <cstdlib>
 #include <memory>
 #include <opencv2/opencv.hpp>
@@ -70,6 +71,7 @@ int main(int argc, char *argv[])
   auto_buff::BigTarget buff_big_target(config_path);
   auto_buff::Aimer buff_aimer(config_path);
   int buff_lost_count = 0;
+  auto last_buff_position_log = std::chrono::steady_clock::time_point{};
 
   auto reset_buff = [&]()
   {
@@ -108,7 +110,9 @@ int main(int argc, char *argv[])
     uint16_t last_bullet_count = 0;
 
     while (!quit) {
-      if (!target_queue.empty() && mode != io::GimbalMode::SMALL_BUFF && mode != io::GimbalMode::BIG_BUFF) //&& mode == io::GimbalMode::AUTO_AIM
+      if (!target_queue.empty() &&
+          (mode == io::GimbalMode::AUTO_AIM || mode == io::GimbalMode::LONG ||
+           mode == io::GimbalMode::OUTPOST))
       {
         auto target = target_queue.front();
         auto gs = gimbal.state();
@@ -252,10 +256,34 @@ int main(int argc, char *argv[])
             buff_plan.yaw_acc, buff_plan.pitch, buff_plan.pitch_vel, buff_plan.pitch_acc);
       }
 
+      if (power_runes && power_runes->target().observed &&
+          power_runes->r_center_observed &&
+          std::isfinite(power_runes->target().center.x) &&
+          std::isfinite(power_runes->target().center.y) &&
+          std::isfinite(power_runes->r_center_raw.x) &&
+          std::isfinite(power_runes->r_center_raw.y) &&
+          cv::Rect2f(0, 0, static_cast<float>(img.cols), static_cast<float>(img.rows))
+              .contains(power_runes->target().center) &&
+          cv::Rect2f(0, 0, static_cast<float>(img.cols), static_cast<float>(img.rows))
+              .contains(power_runes->r_center_raw) &&
+          t - last_buff_position_log >= 1s)
+      {
+        tools::logger()->info("buff=({:.1f}, {:.1f}) R=({:.1f}, {:.1f}) px",
+          power_runes->target().center.x, power_runes->target().center.y,
+          power_runes->r_center_raw.x, power_runes->r_center_raw.y);
+        last_buff_position_log = t;
+      }
+
       if (power_runes.has_value())
         buff_lost_count = 0;
       else if (++buff_lost_count > 50)
         reset_buff();
+    }
+    // 空闲模式清除旧目标并停止控制、开火。
+    else if (mode.load() == io::GimbalMode::IDLE)
+    {
+      target_queue.push(std::nullopt);
+      gimbal.send(false, false, 0, 0, 0, 0, 0, 0);
     }
     // 自瞄
     else
