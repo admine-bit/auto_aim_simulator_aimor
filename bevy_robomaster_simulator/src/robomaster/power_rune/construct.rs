@@ -1,5 +1,7 @@
-use crate::robomaster::power_rune::collision::RuneIndex;
-use crate::robomaster::power_rune::common::{RUNE_TARGET_COUNT, RuneStartupModes};
+use crate::robomaster::power_rune::collision::{RuneHitSurface, RuneIndex};
+use crate::robomaster::power_rune::common::{
+    RUNE_TARGET_COUNT, RuneRotationDirection, RuneStartupModes,
+};
 use crate::robomaster::power_rune::rotation::PowerRuneRotation;
 use crate::robomaster::power_rune::rune::{PowerRune, PowerRuneMechanism};
 use crate::robomaster::power_rune::visual::{PowerRuneVisuals, RuneVisual};
@@ -10,7 +12,8 @@ use crate::{material, visibility};
 use avian3d::prelude::CollisionEventsEnabled;
 use bevy::ecs::system::SystemParam;
 use bevy::prelude::{
-    ChildOf, Children, Commands, Component, Entity, In, Name, Quat, Query, Res, Transform, Vec3, With,
+    Assets, ChildOf, Children, Commands, Component, Entity, In, Mat4, Mesh, Mesh3d, Name, Quat,
+    Query, Res, Transform, Vec3, With,
 };
 use bevy::world_serialization::{InstanceId, WorldInstanceSpawner};
 use std::collections::HashMap;
@@ -61,6 +64,12 @@ fn build_targets(
             .into_iter()
             .flatten()
         {
+            if let Some(center) = target_center_local(entity, param) {
+                param
+                    .commands
+                    .entity(entity)
+                    .insert(RuneHitSurface { center });
+            }
             insert_all_child(&mut param.commands, entity, &param.children, || {
                 (
                     RuneIndex {
@@ -102,12 +111,53 @@ pub(crate) struct PowerRuneParam<'w, 's> {
     commands: Commands<'w, 's>,
     scene_spawner: Res<'w, WorldInstanceSpawner>,
     startup_modes: Res<'w, RuneStartupModes>,
+    rotation_direction: Res<'w, RuneRotationDirection>,
 
     power_query: Query<'w, 's, (), With<PowerRuneRoot>>,
     names: Query<'w, 's, &'static Name>,
     children: Query<'w, 's, &'static Children>,
     child_of: Query<'w, 's, &'static ChildOf>,
     transforms: Query<'w, 's, &'static Transform>,
+    mesh_handles: Query<'w, 's, &'static Mesh3d>,
+    meshes: Res<'w, Assets<Mesh>>,
+}
+
+/// Each glTF target variant has an offset mesh origin. Find the actual disc centre rather
+/// than assuming its entity translation is the centre of the 300 mm detection surface.
+fn target_center_local(root: Entity, param: &PowerRuneParam) -> Option<Vec3> {
+    fn visit(e: Entity, matrix: Mat4, p: &PowerRuneParam, bounds: &mut Option<(Vec3, Vec3)>) {
+        if let Ok(handle) = p.mesh_handles.get(e) {
+            if let Some(mesh) = p.meshes.get(&handle.0) {
+                if let Some(bevy::mesh::VertexAttributeValues::Float32x3(points)) =
+                    mesh.attribute(Mesh::ATTRIBUTE_POSITION)
+                {
+                    for point in points {
+                        let point = matrix.transform_point3(Vec3::from_array(*point));
+                        match bounds {
+                            Some((lo, hi)) => {
+                                *lo = lo.min(point);
+                                *hi = hi.max(point);
+                            }
+                            None => *bounds = Some((point, point)),
+                        }
+                    }
+                }
+            }
+        }
+        if let Ok(children) = p.children.get(e) {
+            for child in children {
+                let local = p
+                    .transforms
+                    .get(*child)
+                    .map(Transform::to_matrix)
+                    .unwrap_or(Mat4::IDENTITY);
+                visit(*child, matrix * local, p, bounds);
+            }
+        }
+    }
+    let mut bounds = None;
+    visit(root, Mat4::IDENTITY, param, &mut bounds);
+    bounds.map(|(lo, hi)| (lo + hi) * 0.5)
 }
 
 pub(crate) fn setup_power_rune(
@@ -146,9 +196,6 @@ pub(crate) fn setup_power_rune(
         return;
     }
 
-    // Keep the established rotation direction across simulator restarts.
-    let red_clockwise = false;
-
     for (index, face_entity) in faces {
         let team = if (index & 1) > 0 {
             Team::Red
@@ -159,7 +206,9 @@ pub(crate) fn setup_power_rune(
 
         let deactivated = name_map.remove(format!("FACE_{}_R_UNPOWERED", index).as_str());
         let activated = name_map.remove(format!("FACE_{}_R_POWERED", index).as_str());
-        let padding = name_map.get(format!("FACE_{}_R_PADDING", index).as_str()).copied();
+        let padding = name_map
+            .get(format!("FACE_{}_R_PADDING", index).as_str())
+            .copied();
 
         // Apply the fixed letter roll for each GLB front. Their front normals
         // point in opposite directions, so the in-plane angle signs differ.
@@ -185,10 +234,10 @@ pub(crate) fn setup_power_rune(
                     fixed_transform.translation = face_transform.translation
                         + marker_roll * (fixed_transform.translation - face_transform.translation);
                     fixed_transform.rotation = marker_roll * fixed_transform.rotation;
-                    param.commands.entity(marker).insert((
-                        ChildOf(parent.parent()),
-                        fixed_transform,
-                    ));
+                    param
+                        .commands
+                        .entity(marker)
+                        .insert((ChildOf(parent.parent()), fixed_transform));
                 }
             }
         }
@@ -199,10 +248,12 @@ pub(crate) fn setup_power_rune(
             continue;
         };
 
-        let clockwise = match team {
-            Team::Red => red_clockwise,
-            Team::Blue => !red_clockwise,
-        };
+        let clockwise = param.rotation_direction.for_team(team);
+        let initial_rotation = param
+            .transforms
+            .get(face_entity)
+            .map(|t| t.rotation)
+            .unwrap_or_default();
         let mut visuals = PowerRuneVisuals::new(
             Controller::new_visibility(deactivated, activated, activated, activated),
             targets,
@@ -213,7 +264,7 @@ pub(crate) fn setup_power_rune(
         param.commands.entity(face_entity).insert((
             PowerRune::new(team, mode),
             mechanism,
-            PowerRuneRotation::new(clockwise),
+            PowerRuneRotation::for_face(clockwise, team, initial_rotation),
             visuals,
         ));
     }
@@ -224,9 +275,20 @@ pub(super) struct PowerRuneConstructorPlugin;
 
 impl bevy::app::Plugin for PowerRuneConstructorPlugin {
     fn build(&self, app: &mut bevy::app::App) {
-        app.init_resource::<RuneStartupModes>();
+        app.init_resource::<RuneStartupModes>()
+            .init_resource::<RuneRotationDirection>();
         let modes = app.world().resource::<RuneStartupModes>();
-        bevy::log::info!("Rune startup modes: red={:?}, blue={:?}", modes.red, modes.blue);
+        bevy::log::info!(
+            "Rune startup modes: red={:?}, blue={:?}",
+            modes.red,
+            modes.blue
+        );
+        bevy::log::info!(
+            "Rune direction facing the red side: clockwise={}",
+            app.world()
+                .resource::<RuneRotationDirection>()
+                .red_clockwise
+        );
         // `setup_power_rune` is invoked by the scene load sequence, not by an event.
     }
 }

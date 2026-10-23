@@ -41,6 +41,8 @@ SIMULATOR_NICE="${SIMULATOR_NICE:-0}"
 RED_RUNE_MODE="${RED_RUNE_MODE:-large}"
 # 蓝方符转动方式：small 小符 / large 大符；需要独立切换蓝方时修改。
 BLUE_RUNE_MODE="${BLUE_RUNE_MODE:-large}"
+# random 在启动时随机一次；red_cw / red_ccw 固定红方观测方向用于复现，蓝方相反。
+RUNE_DIRECTION="${RUNE_DIRECTION:-random}"
 # =====================
 
 META_FILE="/tmp/talos_ipc_meta"
@@ -72,6 +74,7 @@ usage() {
   程序工作目录：../imca_vision_26aim
   程序参数：configs/sentry.yaml
   红/蓝机关模式：顶部 RED_RUNE_MODE / BLUE_RUNE_MODE 配置，small 小符 / large 大符
+  本体转向：顶部 RUNE_DIRECTION 配置，random / red_cw / red_ccw
   视觉调试窗口：默认关闭（设置 IMCA_VISION_DEBUG_WINDOWS=1 可开启）
 
 选项：
@@ -169,6 +172,8 @@ for rune_variable in RED_RUNE_MODE BLUE_RUNE_MODE; do
 done
 export DAEDALUS_RED_RUNE_MODE="$RED_RUNE_MODE"
 export DAEDALUS_BLUE_RUNE_MODE="$BLUE_RUNE_MODE"
+case "$RUNE_DIRECTION" in random|red_cw|red_ccw) ;; *) die 'RUNE_DIRECTION 必须为 random、red_cw 或 red_ccw' ;; esac
+export DAEDALUS_RUNE_DIRECTION="$RUNE_DIRECTION"
 SIMULATOR_DIR="$(cd -- "$SIMULATOR_DIR" && pwd -P)"
 
 if [[ "$PROGRAM_PATH" != /* ]]; then
@@ -264,14 +269,17 @@ if [[ -n "$existing_simulator_pid" ]]; then
   [[ -r "/proc/${existing_simulator_pid}/environ" ]] || die "无法核对已有仿真器的符模式，请关闭旧仿真后重新启动"
   running_red_rune_mode=""
   running_blue_rune_mode=""
+  running_rune_direction=""
   while IFS= read -r -d '' launch_setting; do
     case "$launch_setting" in
       DAEDALUS_RED_RUNE_MODE=*) running_red_rune_mode="${launch_setting#*=}" ;;
       DAEDALUS_BLUE_RUNE_MODE=*) running_blue_rune_mode="${launch_setting#*=}" ;;
+      DAEDALUS_RUNE_DIRECTION=*) running_rune_direction="${launch_setting#*=}" ;;
     esac
   done < "/proc/${existing_simulator_pid}/environ"
   [[ "$running_red_rune_mode" == "$RED_RUNE_MODE" && "$running_blue_rune_mode" == "$BLUE_RUNE_MODE" ]] || \
     die "已有仿真器的红/蓝符模式为 ${running_red_rune_mode:-未知}/${running_blue_rune_mode:-未知}，本次要求 ${RED_RUNE_MODE}/${BLUE_RUNE_MODE}；请关闭旧仿真后重新启动"
+  [[ "$running_rune_direction" == "$RUNE_DIRECTION" ]] || die '已有仿真器的转向配置不符或版本过旧，请关闭旧仿真后重新启动'
   SIMULATOR_PID="$existing_simulator_pid"
   log "检测到已运行的 Daedalus（PID ${SIMULATOR_PID}），复用现有仿真器"
   if [[ "$AUTO_AIM" == "1" ]]; then
@@ -281,7 +289,7 @@ if [[ -n "$existing_simulator_pid" ]]; then
   fi
 else
   log "启动 Daedalus：$SIMULATOR_DIR"
-  log "机关启动模式：红方=${RED_RUNE_MODE}，蓝方=${BLUE_RUNE_MODE}；视觉初始模式跟随红方"
+  log "机关启动模式：红方=${RED_RUNE_MODE}，蓝方=${BLUE_RUNE_MODE}，转向=${RUNE_DIRECTION}；视觉初始模式跟随红方"
   # 没有正在运行的仿真器时，清理上一次运行留下的精确 IPC 文件，避免误判为已就绪。
   rm -f -- "$META_FILE" "$IMAGE_POOL_FILE"
   (

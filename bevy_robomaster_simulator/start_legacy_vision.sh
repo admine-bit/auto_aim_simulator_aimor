@@ -13,6 +13,8 @@ JOBS="${BUILD_JOBS:-3}"
 RED_RUNE_MODE="${RED_RUNE_MODE:-large}"
 # 蓝方符转动方式：small / large；独立于红方设置，保留各自已固定的转向。
 BLUE_RUNE_MODE="${BLUE_RUNE_MODE:-large}"
+# 机关本体转向：random 启动时随机一次；red_cw / red_ccw 可固定红方观测方向用于复现，蓝方相反。
+RUNE_DIRECTION="${RUNE_DIRECTION:-random}"
 # 云台高度补偿（米）：瞄点偏高时调小，偏低时调大；-0.5 是原来 -1 与 0 的中间值。
 GIMBAL_HEIGHT_OFFSET_M="${GIMBAL_HEIGHT_OFFSET_M:--0.3}"
 # 给仿真预留的物理核心数，其余核心优先留给视觉；仿真供图不足时调大。
@@ -38,8 +40,9 @@ for rune_variable in RED_RUNE_MODE BLUE_RUNE_MODE; do
     *) printf '%s 必须是 small 或 large，实际为：%s\n' "$rune_variable" "${!rune_variable}" >&2; exit 1 ;;
   esac
 done
-export RED_RUNE_MODE BLUE_RUNE_MODE
-printf '[legacy-launch] rune modes: red=%s blue=%s; initial vision follows red\n' "$RED_RUNE_MODE" "$BLUE_RUNE_MODE"
+case "$RUNE_DIRECTION" in random|red_cw|red_ccw) ;; *) printf 'RUNE_DIRECTION 必须为 random、red_cw 或 red_ccw\n' >&2; exit 1 ;; esac
+export RED_RUNE_MODE BLUE_RUNE_MODE RUNE_DIRECTION
+printf '[legacy-launch] rune modes: red=%s blue=%s direction=%s; initial vision follows red\n' "$RED_RUNE_MODE" "$BLUE_RUNE_MODE" "$RUNE_DIRECTION"
 
 [[ -f "${SOURCE_DIR}/CMakeLists.txt" ]] || {
   printf '找不到视觉源码：%s\n' "$SOURCE_DIR" >&2
@@ -89,7 +92,7 @@ cmake -S "$SOURCE_COPY" -B "$BUILD_DIR" -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_PREFIX_PATH="${SIM_ROOT}/.local-deps/root/usr" \
   -DBLAS_LIBRARIES=/usr/lib/x86_64-linux-gnu/libblas.so.3 \
   -DLAPACK_LIBRARIES=/usr/lib/x86_64-linux-gnu/liblapack.so.3
-cmake --build "$BUILD_DIR" --target auto_buff_debug_mpc -j "$JOBS"
+cmake --build "$BUILD_DIR" --target auto_aim_debug_mpc -j "$JOBS"
 c++ -std=c++20 -O3 -march=native -fPIC -shared \
   -I "${SOURCE_COPY}/io/hikrobot/include" \
   "${SCRIPT_DIR}/legacy_vision/camera_shim.cpp" -o "$SHIM"
@@ -99,5 +102,5 @@ mkdir -p "$RUN_DIR"
   --program /usr/bin/python3 --workdir "$RUN_DIR" --clear-args -- \
   "${SCRIPT_DIR}/legacy_vision/bridge.py" \
   --source "$SOURCE_COPY" --runtime "$RUN_DIR" --vision-workdir "$SOURCE_DIR" \
-  --vision "$BUILD_DIR/auto_buff_debug_mpc" --shim "$SHIM" \
+  --vision "$BUILD_DIR/auto_aim_debug_mpc" --shim "$SHIM" \
   --gimbal-height-offset-m "$GIMBAL_HEIGHT_OFFSET_M"

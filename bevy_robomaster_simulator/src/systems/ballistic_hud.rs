@@ -14,6 +14,7 @@ use crate::components::{
     InfantryLaunchOffset, MainCamera, SubscribeAutoAim,
 };
 use crate::config::{BallisticHudConfig, SimulationConfig};
+use crate::robomaster::prelude::{RuneHitFeedback, RuneHitOutcome, Team};
 
 pub struct BallisticHudPlugin;
 
@@ -75,6 +76,7 @@ enum HudText {
     Details,
     Status,
     SelectedRange,
+    Ring,
 }
 
 #[derive(Component, Clone, Copy)]
@@ -202,6 +204,18 @@ fn spawn_hud(
                     position_type: PositionType::Absolute,
                     right: px(26),
                     bottom: px(44),
+                    ..default()
+                },
+            ));
+            root.spawn((
+                HudText::Ring,
+                Text::new("环数 —"),
+                font(&face, 16.0),
+                TextColor(AMBER),
+                Node {
+                    position_type: PositionType::Absolute,
+                    right: px(26),
+                    bottom: px(76),
                     ..default()
                 },
             ));
@@ -335,6 +349,7 @@ fn update_hud(
     mut decorations: Query<(&ScopeDecoration, &mut Node), (Without<HudRoot>, Without<HelpText>)>,
     mut labels: Query<(&HudText, &mut Text)>,
     mut help: Query<&mut Node, (With<HelpText>, Without<HudRoot>)>,
+    hit_feedback: Option<Res<RuneHitFeedback>>,
     state: (
         (Res<ScopeMaterialHandle>, ResMut<Assets<ScopeMaterial>>),
         (Res<SubscribeAutoAim>, Res<VisionMode>),
@@ -507,6 +522,26 @@ fn update_hud(
                 status.1.0
             ),
             HudText::SelectedRange => format!("{range:.1} m"),
+            HudText::Ring => hit_feedback
+                .as_ref()
+                .and_then(|f| f.last.as_ref())
+                .map_or_else(
+                    || "环数 —  /  等待有效靶面命中".to_owned(),
+                    |hit| {
+                        format!(
+                            "{}符 · 第 {} 靶  /  {} 环\n径向 {} mm · {}",
+                            if hit.team == Team::Red { "红" } else { "蓝" },
+                            hit.result.target + 1,
+                            hit.result.ring,
+                            hit.result.radial_mm,
+                            match hit.result.outcome {
+                                RuneHitOutcome::WrongTarget => "错靶重置",
+                                RuneHitOutcome::Ignored => "当前未亮靶",
+                                _ => "有效命中",
+                            }
+                        )
+                    },
+                ),
         };
         if text.0 != value {
             text.0 = value;

@@ -19,7 +19,7 @@ use std::path::Path;
 use crate::components::{
     ActiveSlapper, Controlled, GameLayer, GroundRoot, Infantry, PreciousCollision, SlapperInfantry,
 };
-use crate::config::SimulationConfig;
+use crate::config::{SceneMap, SimulationConfig};
 use crate::robomaster::power_rune::construct::setup_power_rune;
 use crate::robomaster::prelude::{
     HERO_ROBOT_CONFIG, INFANTRY_THREE_CONFIG, PowerRuneRoot, Team, TechCoreRoot,
@@ -84,7 +84,16 @@ async fn load_scene(w: AsyncWorld) {
         .with_world(|world| world.resource::<AssetServer>().clone())
         .await;
     let player_start = w
-        .with_world(|world| world.resource::<SimulationConfig>().scene.player_start.clone())
+        .with_world(|world| {
+            world
+                .resource::<SimulationConfig>()
+                .scene
+                .player_start
+                .clone()
+        })
+        .await;
+    let map = w
+        .with_world(|world| world.resource::<SimulationConfig>().scene.map)
         .await;
     let scene =
         |path: &'static str| WorldAssetRoot(assets.load(GltfAssetLabel::Scene(0).from_asset(path)));
@@ -106,47 +115,117 @@ async fn load_scene(w: AsyncWorld) {
     };
 
     // Environment first. Every robot below lands on what these build.
-    let ground = w
-        .spawn(scene("GROUND.glb"), (GroundRoot, Friction::new(0.5)))
+    if map == SceneMap::Rmuc2027 {
+        // CAD is already converted from Z-up metres to Y-up metres. Do not scale the terrain.
+        let report: serde_json::Value =
+            serde_json::from_str(include_str!("../assets/maps/rmuc2027/import_report.json"))
+                .expect("generated RMUC2027 import report must be valid");
+        for file in report["render_files"].as_array().expect("render files") {
+            let path = format!("maps/rmuc2027/{}", file.as_str().expect("render file name"));
+            w.spawn(
+                WorldAssetRoot(assets.load(GltfAssetLabel::Scene(0).from_asset(path))),
+                GroundRoot,
+            )
+            .await;
+        }
+        let ground = w
+            .spawn(
+                scene("maps/rmuc2027/collision.glb"),
+                (
+                    GroundRoot,
+                    RigidBody::Static,
+                    Friction::new(0.5),
+                    Visibility::Hidden,
+                ),
+            )
+            .await;
+        w.with_world(move |world| {
+            world.entity_mut(ground).insert(
+                ColliderConstructorHierarchy::new(ColliderConstructor::TrimeshFromMesh)
+                    .with_default_layers(layers),
+            );
+        })
         .await;
-    w.run(setup_dart_launch, ground).await;
-    w.run(
-        setup_collision,
-        (
-            ground,
-            PreciousCollision(HashMap::from([(
-                "GROUND_DENSE".to_string(),
-                static_trimesh(),
-            )])),
-        ),
-    )
-    .await;
-    colliders_ready(&w, ground).await;
+        colliders_ready(&w, ground).await;
+        let markers = w
+            .spawn(scene("maps/rmuc2027/markers.glb"), GroundRoot)
+            .await;
+        w.run(setup_dart_launch, markers).await;
+        info!("RMUC2027 CAD terrain and concave triangle-mesh collisions ready");
+    } else {
+        let ground = w
+            .spawn(scene("GROUND.glb"), (GroundRoot, Friction::new(0.5)))
+            .await;
+        w.run(setup_dart_launch, ground).await;
+        w.run(
+            setup_collision,
+            (
+                ground,
+                PreciousCollision(HashMap::from([(
+                    "GROUND_DENSE".to_string(),
+                    static_trimesh(),
+                )])),
+            ),
+        )
+        .await;
+        colliders_ready(&w, ground).await;
+    }
 
     let outpost = w
-        .spawn(scene("OUTPOST.glb"), (RigidBody::Static, ScanOutpost))
+        .spawn(
+            scene(if map == SceneMap::Rmuc2027 {
+                "maps/rmuc2027/outposts.glb"
+            } else {
+                "OUTPOST.glb"
+            }),
+            (RigidBody::Static, ScanOutpost),
+        )
         .await;
     w.run(setup_outposts, outpost).await;
 
-    let tech_core = w.spawn(scene("TECH_CORE.glb"), TechCoreRoot).await;
+    let tech_core = w
+        .spawn(
+            scene(if map == SceneMap::Rmuc2027 {
+                "maps/rmuc2027/tech_core.glb"
+            } else {
+                "TECH_CORE.glb"
+            }),
+            TechCoreRoot,
+        )
+        .await;
     w.run(
         setup_tech_core,
         (tech_core, instance_of(&w, tech_core).await),
     )
     .await;
-    w.run(
-        setup_collision,
-        (
-            tech_core,
-            PreciousCollision(HashMap::from([("GROUND".to_string(), static_trimesh())])),
-        ),
-    )
-    .await;
+    if map == SceneMap::Rmuc2027 {
+        w.with_world(move |world| {
+            world.entity_mut(tech_core).insert((
+                RigidBody::Static,
+                ColliderConstructorHierarchy::new(ColliderConstructor::TrimeshFromMesh)
+                    .with_default_layers(layers),
+            ));
+        })
+        .await;
+    } else {
+        w.run(
+            setup_collision,
+            (
+                tech_core,
+                PreciousCollision(HashMap::from([("GROUND".to_string(), static_trimesh())])),
+            ),
+        )
+        .await;
+    }
     colliders_ready(&w, tech_core).await;
 
     let power_rune = w
         .spawn(
-            scene("POWER.glb"),
+            scene(if map == SceneMap::Rmuc2027 {
+                "maps/rmuc2027/power.glb"
+            } else {
+                "POWER.glb"
+            }),
             (
                 RigidBody::Static,
                 CollisionMargin(0.001),
@@ -317,4 +396,92 @@ fn power_rune_collision(
         }
     }
     collision
+}
+
+#[cfg(test)]
+mod map_tests {
+    use super::*;
+    use bevy::asset::RenderAssetUsages;
+    use bevy::mesh::{Indices, PrimitiveTopology};
+    use serde_json::Value;
+
+    /// Exercise Avian against the shipped collision buffers, including tunnel voids.
+    /// Requiring NORMAL guards against Bevy's glTF loader removing the index buffer.
+    #[test]
+    fn rmuc2027_colliders_preserve_slopes_and_tunnel_openings() {
+        let bytes = std::fs::read(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/assets/maps/rmuc2027/collision.glb"
+        ))
+        .unwrap();
+        let json_len = u32::from_le_bytes(bytes[12..16].try_into().unwrap()) as usize;
+        let json: Value = serde_json::from_slice(&bytes[20..20 + json_len]).unwrap();
+        let binary = &bytes[28 + json_len..];
+        let buffer = |index: usize| {
+            let accessor = &json["accessors"][index];
+            let view = &json["bufferViews"][accessor["bufferView"].as_u64().unwrap() as usize];
+            let start = view["byteOffset"].as_u64().unwrap_or(0) as usize
+                + accessor["byteOffset"].as_u64().unwrap_or(0) as usize;
+            let count = accessor["count"].as_u64().unwrap() as usize;
+            let stride = if accessor["type"] == "VEC3" { 12 } else { 4 };
+            &binary[start..start + count * stride]
+        };
+        let mut colliders = Vec::new();
+        for mesh in json["meshes"].as_array().unwrap() {
+            for primitive in mesh["primitives"].as_array().unwrap() {
+                assert!(primitive["attributes"]["NORMAL"].is_number());
+                let positions: Vec<[f32; 3]> =
+                    buffer(primitive["attributes"]["POSITION"].as_u64().unwrap() as usize)
+                        .chunks_exact(12)
+                        .map(|v| {
+                            std::array::from_fn(|i| {
+                                f32::from_le_bytes(v[4 * i..4 * i + 4].try_into().unwrap())
+                            })
+                        })
+                        .collect();
+                let indices: Vec<u32> = buffer(primitive["indices"].as_u64().unwrap() as usize)
+                    .chunks_exact(4)
+                    .map(|v| u32::from_le_bytes(v.try_into().unwrap()))
+                    .collect();
+                let mesh = Mesh::new(
+                    PrimitiveTopology::TriangleList,
+                    RenderAssetUsages::default(),
+                )
+                .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, positions)
+                .with_inserted_indices(Indices::U32(indices));
+                colliders.push(Collider::trimesh_from_mesh(&mesh).expect("CAD collider"));
+            }
+        }
+        assert_eq!(colliders.len(), 396);
+        let hit = |origin: Vec3, direction: Vec3, distance| {
+            colliders
+                .iter()
+                .filter_map(|c| {
+                    c.cast_ray(
+                        Vec3::ZERO,
+                        Quat::IDENTITY,
+                        origin,
+                        direction,
+                        distance,
+                        false,
+                    )
+                    .map(|(distance, _)| distance)
+                })
+                .min_by(f32::total_cmp)
+        };
+        // The saved horizontal spawn remains over the original CAD floor, now at +89 mm.
+        let floor = 4.0 - hit(Vec3::new(-4.1976643, 4.0, -4.590342), Vec3::NEG_Y, 5.0).unwrap();
+        assert!((floor - 0.0893).abs() < 0.001, "spawn floor {floor}");
+        // This lane has the source slope, rather than an axis-aligned flat replacement.
+        let a = 4.0 - hit(Vec3::new(3.0, 4.0, 0.0), Vec3::NEG_Y, 5.0).unwrap();
+        let b = 4.0 - hit(Vec3::new(3.0, 4.0, 1.0), Vec3::NEG_Y, 5.0).unwrap();
+        assert!((a - 0.5095).abs() < 0.001);
+        assert!((b - 0.4833).abs() < 0.001);
+        for z in [-7.0, 7.0] {
+            assert!(hit(Vec3::new(-1.5, 0.35, z), Vec3::X, 3.0).is_none());
+            assert!(hit(Vec3::new(-1.5, 0.49, z), Vec3::X, 3.0).is_some());
+            let ceiling = hit(Vec3::new(0.0, 0.35, z), Vec3::Y, 1.0).unwrap();
+            assert!((ceiling - 0.1264).abs() < 0.001);
+        }
+    }
 }

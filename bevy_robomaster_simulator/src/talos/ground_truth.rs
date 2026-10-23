@@ -128,14 +128,10 @@ pub fn publish_ground_truth_system(
 
         let pos_ros = to_ros_vec3(global_tf.translation());
 
-        // Extract current rotation angle around the actual rune axis (-1, 0, -1).
-        // The rune rotates via `rotate_local_axis(direction, angle)`, so we must
-        // project the quaternion back onto that axis — not extract an Euler X angle.
-        let rune_axis = Dir3::from_xyz(-1.0, 0.0, -1.0).unwrap();
-        let (axis, angle) = local_tf.rotation.to_axis_angle();
-        let current_angle = angle * axis.dot(*rune_axis).signum();
-
+        // Project the rotation relative to this face's initial orientation onto
+        // its local axis; the protocol uses clockwise-positive angles.
         let controller = rotation.controller();
+        let current_angle = controller.current_angle(local_tf);
         let direction = if controller.is_clockwise() { 1 } else { -1 };
 
         let (sin_amplitude, sin_omega, relative_time, sin_offset) = controller
@@ -161,7 +157,7 @@ pub fn publish_ground_truth_system(
             r_center_odom: [pos_ros.x, pos_ros.y, pos_ros.z],
             radius: 0.0,
             current_angle,
-            v_roll: 0.0,
+            v_roll: controller.current_speed(power_rune.mode()),
             direction,
             sin_amplitude,
             sin_omega,

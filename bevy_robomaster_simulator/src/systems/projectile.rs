@@ -9,7 +9,7 @@ use crate::components::{
     ProjectileSetting,
 };
 use crate::config::SimulationConfig;
-use crate::robomaster::prelude::Projectile;
+use crate::robomaster::prelude::{Projectile, RuneBullet};
 use crate::statistic::ProjectileStatistics;
 use crate::systems::{ControllerState, request_controller_rumble};
 
@@ -99,6 +99,9 @@ pub fn projectile_launch(
             TimerMode::Once,
         )),
         Projectile,
+        RuneBullet {
+            diameter_m: config.projectile.diameter,
+        },
     ));
     request_controller_rumble(
         controller.as_deref(),

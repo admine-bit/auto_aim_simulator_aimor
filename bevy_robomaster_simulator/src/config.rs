@@ -130,8 +130,17 @@ impl Default for RenderConfig {
 #[derive(Deserialize, Reflect, Clone, Debug, Default, PartialEq)]
 #[serde(default)]
 pub struct SceneConfig {
+    pub map: SceneMap,
     pub models: Vec<SceneModelConfig>,
     pub player_start: PlayerStartConfig,
+}
+
+#[derive(Deserialize, Reflect, Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum SceneMap {
+    Legacy,
+    #[default]
+    Rmuc2027,
 }
 
 #[derive(Deserialize, Reflect, Clone, Debug, PartialEq)]
@@ -161,8 +170,7 @@ impl PlayerStartConfig {
     pub fn transform(&self) -> Transform {
         let [x, y, z] = self.position;
         let [rx, ry, rz] = self.rotation;
-        Transform::from_xyz(x, y, z)
-            .with_rotation(Quat::from_euler(EulerRot::XYZ, rx, ry, rz))
+        Transform::from_xyz(x, y, z).with_rotation(Quat::from_euler(EulerRot::XYZ, rx, ry, rz))
     }
 }
 

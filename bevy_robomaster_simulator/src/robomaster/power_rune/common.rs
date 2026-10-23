@@ -61,6 +61,43 @@ impl Default for RuneStartupModes {
     }
 }
 
+/// One draw at simulator startup, shared by both faces and retained through all practice cycles.
+#[derive(Resource, Debug, Copy, Clone)]
+pub struct RuneRotationDirection {
+    pub red_clockwise: bool,
+}
+
+impl RuneRotationDirection {
+    fn from_name(name: &str, rng: &mut impl rand::Rng) -> Result<Self, String> {
+        use rand::RngExt;
+        let red_clockwise = match name {
+            "random" => rng.random_bool(0.5),
+            "red_cw" => true,
+            "red_ccw" => false,
+            _ => {
+                return Err(format!(
+                    "RUNE_DIRECTION 必须为 random、red_cw 或 red_ccw，实际为 {name:?}"
+                ));
+            }
+        };
+        Ok(Self { red_clockwise })
+    }
+
+    pub fn for_team(self, team: Team) -> bool {
+        match team {
+            Team::Red => self.red_clockwise,
+            Team::Blue => !self.red_clockwise,
+        }
+    }
+}
+
+impl Default for RuneRotationDirection {
+    fn default() -> Self {
+        let name = std::env::var("DAEDALUS_RUNE_DIRECTION").unwrap_or_else(|_| "random".into());
+        Self::from_name(&name, &mut rand::rng()).expect("无效的机关旋转方向配置")
+    }
+}
+
 pub const RUNE_TARGET_COUNT: usize = 5;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -98,6 +135,33 @@ pub enum RuneTransition {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn direction_is_sampled_once_with_opposite_facing_signs_and_explicit_replay_choices() {
+        use rand::{SeedableRng, rngs::StdRng};
+        let mut rng = StdRng::seed_from_u64(9);
+        let mut observed = [false; 2];
+        for _ in 0..64 {
+            let direction = RuneRotationDirection::from_name("random", &mut rng).unwrap();
+            observed[direction.red_clockwise as usize] = true;
+            assert_ne!(
+                direction.for_team(Team::Red),
+                direction.for_team(Team::Blue)
+            );
+        }
+        assert_eq!(observed, [true, true]);
+        assert!(
+            RuneRotationDirection::from_name("red_cw", &mut rng)
+                .unwrap()
+                .red_clockwise
+        );
+        assert!(
+            !RuneRotationDirection::from_name("red_ccw", &mut rng)
+                .unwrap()
+                .red_clockwise
+        );
+        assert!(RuneRotationDirection::from_name("bad", &mut rng).is_err());
+    }
 
     #[test]
     fn startup_modes_select_both_teams_independently() {

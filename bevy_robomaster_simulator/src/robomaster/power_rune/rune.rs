@@ -1,3 +1,5 @@
+use super::collision::RuneActivated;
+use super::common::RuneTransition;
 use crate::robomaster::power_rune::common::RuneMode;
 use crate::robomaster::power_rune::rotation::PowerRuneRotation;
 use crate::robomaster::power_rune::state::MechanismState;
@@ -5,7 +7,9 @@ use crate::robomaster::power_rune::visual::PowerRuneVisuals;
 use crate::robomaster::prelude::Team;
 use crate::robomaster::visibility::StatefulAppearance;
 use bevy::app::Update;
-use bevy::prelude::{Component, IntoScheduleConfigs, Query, Res, Time, Transform};
+use bevy::prelude::{
+    Commands, Component, Entity, IntoScheduleConfigs, Query, Res, Time, Transform,
+};
 
 #[derive(Component, Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct PowerRune {
@@ -55,14 +59,17 @@ impl Default for PowerRuneMechanism {
 }
 
 fn rune_activation_tick(
+    mut commands: Commands,
     time: Res<Time>,
-    mut runes: Query<(&mut PowerRuneMechanism, &mut PowerRuneRotation)>,
+    mut runes: Query<(Entity, &mut PowerRuneMechanism, &mut PowerRuneRotation)>,
 ) {
     let delta_secs = time.delta_secs();
     let mut rng = rand::rng();
 
-    for (mut mechanism, mut rotation) in &mut runes {
-        mechanism.state.tick(delta_secs, &mut rng);
+    for (entity, mut mechanism, mut rotation) in &mut runes {
+        if mechanism.state.tick(delta_secs, &mut rng) == RuneTransition::Activated {
+            commands.trigger(RuneActivated { rune: entity });
+        }
         rotation.sync_activation(
             mechanism.state.mode(),
             mechanism.state.is_activating(),

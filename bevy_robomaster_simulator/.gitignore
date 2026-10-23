@@ -1,4 +1,6 @@
 /target
+/.cache/
+__pycache__/
 *.stp
 .DS_Store
 assets_old

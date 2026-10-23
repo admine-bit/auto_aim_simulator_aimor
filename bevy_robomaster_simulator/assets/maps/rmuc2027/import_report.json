@@ -1,0 +1,3066 @@
+{
+  "source_repository": "https://github.com/keilking66/RMUC2027-map",
+  "source_version": "V1.0.0",
+  "source_commit": "5833356ba0595a0ddba5090dc4065f8f99e683c3",
+  "source_manifest_sha256": "51ea4394bff4cda6882f98668dabfd3a388f5d39fef08cfce22a8173fd9140ef",
+  "source_mesh_url": "https://github.com/keilking66/RMUC2027-map/releases/download/v1.0.0/field_meshes.npz",
+  "source_sha256": "ff7083cfc157c4836617b157d26213c883d40d988a6f1920e4567ec41ead1465",
+  "coordinate_transform": {
+    "formula": "[x, z - CAD_FLOOR_Z, CAD_CENTER_Y - y]",
+    "cad_center_y": 1.6243434,
+    "cad_floor_z": -1.850872,
+    "units": "meter",
+    "scale": 1
+  },
+  "render_files": [
+    "render_00.glb",
+    "render_01.glb",
+    "render_02.glb"
+  ],
+  "source_parts": 644,
+  "static_parts": 396,
+  "source_triangles": 6055886,
+  "render_triangles": 3653196,
+  "collision_triangles": 908327,
+  "collision_grid_m": 0.005,
+  "maximum_collision_vertex_displacement_m": 0.004330127018922193,
+  "interactive_adaptations": {
+    "power": [
+      {
+        "name": "RMUC2027_POWER",
+        "source_nodes": [
+          "ROOT"
+        ],
+        "replaced_source_parts": [
+          5,
+          164
+        ],
+        "translation": [
+          -0.06440890580415726,
+          0.36315596103668213,
+          0.0015012748772278428
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "cad_world_bounds": [
+          [
+            -1.534414529800415,
+            0.44552838802337646,
+            -1.5344221591949463
+          ],
+          [
+            1.5344289541244507,
+            3.7082114219665527,
+            1.5344213247299194
+          ]
+        ]
+      }
+    ],
+    "outposts": [
+      {
+        "name": "RMUC2027_RED_OUTPOST",
+        "source_nodes": [
+          "OUTPOST_1"
+        ],
+        "replaced_source_parts": [
+          217,
+          259
+        ],
+        "translation": [
+          0.06163362664063676,
+          1.8956769378679394,
+          1.602660936535914
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "cad_world_bounds": [
+          [
+            2.8599889278411865,
+            0.5543332099914551,
+            -4.180142402648926
+          ],
+          [
+            3.3910951614379883,
+            2.0317602157592773,
+            -3.6036057472229004
+          ]
+        ]
+      },
+      {
+        "name": "RMUC2027_BLUE_OUTPOST",
+        "source_nodes": [
+          "OUTPOST_2"
+        ],
+        "replaced_source_parts": [
+          174,
+          216
+        ],
+        "translation": [
+          -0.06943874061107635,
+          1.8956768587231636,
+          1.679133415222168
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "cad_world_bounds": [
+          [
+            -3.391080856323242,
+            0.5543332099914551,
+            3.603605270385742
+          ],
+          [
+            -2.8599743843078613,
+            2.0317602157592773,
+            4.180141925811768
+          ]
+        ]
+      }
+    ],
+    "tech_core": [
+      {
+        "name": "RMUC2027_RED_CORE",
+        "source_nodes": [
+          "RED_ARM_1",
+          "RED_ARM_2",
+          "RED_ARM_3",
+          "RED_LIGHT_1_L_1",
+          "RED_LIGHT_1_L_10",
+          "RED_LIGHT_1_L_11",
+          "RED_LIGHT_1_L_12",
+          "RED_LIGHT_1_L_13",
+          "RED_LIGHT_1_L_14",
+          "RED_LIGHT_1_L_15",
+          "RED_LIGHT_1_L_16",
+          "RED_LIGHT_1_L_17",
+          "RED_LIGHT_1_L_18",
+          "RED_LIGHT_1_L_2",
+          "RED_LIGHT_1_L_3",
+          "RED_LIGHT_1_L_4",
+          "RED_LIGHT_1_L_5",
+          "RED_LIGHT_1_L_6",
+          "RED_LIGHT_1_L_7",
+          "RED_LIGHT_1_L_8",
+          "RED_LIGHT_1_L_9",
+          "RED_LIGHT_1_R_1",
+          "RED_LIGHT_1_R_10",
+          "RED_LIGHT_1_R_11",
+          "RED_LIGHT_1_R_12",
+          "RED_LIGHT_1_R_13",
+          "RED_LIGHT_1_R_14",
+          "RED_LIGHT_1_R_15",
+          "RED_LIGHT_1_R_16",
+          "RED_LIGHT_1_R_17",
+          "RED_LIGHT_1_R_18",
+          "RED_LIGHT_1_R_2",
+          "RED_LIGHT_1_R_3",
+          "RED_LIGHT_1_R_4",
+          "RED_LIGHT_1_R_5",
+          "RED_LIGHT_1_R_6",
+          "RED_LIGHT_1_R_7",
+          "RED_LIGHT_1_R_8",
+          "RED_LIGHT_1_R_9",
+          "RED_LIGHT_2",
+          "RED_LIGHT_3",
+          "RED_PANEL"
+        ],
+        "replaced_source_parts": [
+          165,
+          165
+        ],
+        "translation": [
+          -0.21851404752283854,
+          -0.4059398596906063,
+          0.008530538421777922
+        ],
+        "scale": [
+          1.2339145658770996,
+          1.5831814957507342,
+          1.2339145658770996
+        ],
+        "cad_world_bounds": [
+          [
+            -0.12161516398191452,
+            0.35952842235565186,
+            -1.0776309967041016
+          ],
+          [
+            0.7622683048248291,
+            1.6637330055236816,
+            0.11834633350372314
+          ]
+        ]
+      },
+      {
+        "name": "RMUC2027_BLUE_CORE",
+        "source_nodes": [
+          "BLUE_ARM_1",
+          "BLUE_ARM_2",
+          "BLUE_ARM_3",
+          "BLUE_LIGHT_1_L_1",
+          "BLUE_LIGHT_1_L_10",
+          "BLUE_LIGHT_1_L_11",
+          "BLUE_LIGHT_1_L_12",
+          "BLUE_LIGHT_1_L_13",
+          "BLUE_LIGHT_1_L_14",
+          "BLUE_LIGHT_1_L_15",
+          "BLUE_LIGHT_1_L_16",
+          "BLUE_LIGHT_1_L_17",
+          "BLUE_LIGHT_1_L_18",
+          "BLUE_LIGHT_1_L_2",
+          "BLUE_LIGHT_1_L_3",
+          "BLUE_LIGHT_1_L_4",
+          "BLUE_LIGHT_1_L_5",
+          "BLUE_LIGHT_1_L_6",
+          "BLUE_LIGHT_1_L_7",
+          "BLUE_LIGHT_1_L_8",
+          "BLUE_LIGHT_1_L_9",
+          "BLUE_LIGHT_1_R_1",
+          "BLUE_LIGHT_1_R_10",
+          "BLUE_LIGHT_1_R_11",
+          "BLUE_LIGHT_1_R_12",
+          "BLUE_LIGHT_1_R_13",
+          "BLUE_LIGHT_1_R_14",
+          "BLUE_LIGHT_1_R_15",
+          "BLUE_LIGHT_1_R_16",
+          "BLUE_LIGHT_1_R_17",
+          "BLUE_LIGHT_1_R_18",
+          "BLUE_LIGHT_1_R_2",
+          "BLUE_LIGHT_1_R_3",
+          "BLUE_LIGHT_1_R_4",
+          "BLUE_LIGHT_1_R_5",
+          "BLUE_LIGHT_1_R_6",
+          "BLUE_LIGHT_1_R_7",
+          "BLUE_LIGHT_1_R_8",
+          "BLUE_LIGHT_1_R_9",
+          "BLUE_LIGHT_2",
+          "BLUE_LIGHT_3",
+          "BLUE_PANEL"
+        ],
+        "replaced_source_parts": [
+          166,
+          166
+        ],
+        "translation": [
+          0.04222194780899735,
+          -0.405939748331005,
+          -0.1879340117708317
+        ],
+        "scale": [
+          1.2442165348174878,
+          1.583181525833445,
+          1.2442165348174878
+        ],
+        "cad_world_bounds": [
+          [
+            -0.7664965391159058,
+            0.35952842235565186,
+            -0.12258946895599365
+          ],
+          [
+            0.11738693714141846,
+            1.6637330055236816,
+            1.073387861251831
+          ]
+        ]
+      }
+    ]
+  },
+  "dart_marker": {
+    "name": "DART_LAUNCH_DIRECTION",
+    "translation": [
+      13.312952041625977,
+      1.0081720352172852,
+      6.707343578338623
+    ],
+    "rotation": [
+      -0.05232881382107735,
+      -0.031442321836948395,
+      0.5140774250030518,
+      0.855568528175354
+    ],
+    "calibration": "Relocated legacy launch direction; source CAD has no functional muzzle anchor."
+  },
+  "parts": [
+    {
+      "id": "p00000",
+      "source_triangles": 4972,
+      "render_triangles": 4972,
+      "collision_triangles": 4972,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00001",
+      "source_triangles": 380,
+      "render_triangles": 380,
+      "collision_triangles": 380,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00002",
+      "source_triangles": 12,
+      "render_triangles": 12,
+      "collision_triangles": 12,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00003",
+      "source_triangles": 12,
+      "render_triangles": 12,
+      "collision_triangles": 12,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00004",
+      "source_triangles": 7204,
+      "render_triangles": 7204,
+      "collision_triangles": 7204,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00167",
+      "source_triangles": 208,
+      "render_triangles": 208,
+      "collision_triangles": 208,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00168",
+      "source_triangles": 208,
+      "render_triangles": 208,
+      "collision_triangles": 208,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00169",
+      "source_triangles": 9198,
+      "render_triangles": 9198,
+      "collision_triangles": 9198,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00170",
+      "source_triangles": 1254,
+      "render_triangles": 1254,
+      "collision_triangles": 1254,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00171",
+      "source_triangles": 1254,
+      "render_triangles": 1254,
+      "collision_triangles": 1254,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00172",
+      "source_triangles": 72,
+      "render_triangles": 72,
+      "collision_triangles": 72,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00173",
+      "source_triangles": 72,
+      "render_triangles": 72,
+      "collision_triangles": 72,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00260",
+      "source_triangles": 1816,
+      "render_triangles": 1816,
+      "collision_triangles": 1816,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00261",
+      "source_triangles": 1816,
+      "render_triangles": 1816,
+      "collision_triangles": 1816,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00262",
+      "source_triangles": 1312,
+      "render_triangles": 1312,
+      "collision_triangles": 1312,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00263",
+      "source_triangles": 1312,
+      "render_triangles": 1312,
+      "collision_triangles": 1312,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00264",
+      "source_triangles": 4954,
+      "render_triangles": 4954,
+      "collision_triangles": 4954,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00265",
+      "source_triangles": 86,
+      "render_triangles": 86,
+      "collision_triangles": 86,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00266",
+      "source_triangles": 492,
+      "render_triangles": 492,
+      "collision_triangles": 492,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00267",
+      "source_triangles": 282,
+      "render_triangles": 282,
+      "collision_triangles": 282,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00268",
+      "source_triangles": 28,
+      "render_triangles": 28,
+      "collision_triangles": 28,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00269",
+      "source_triangles": 35526,
+      "render_triangles": 35526,
+      "collision_triangles": 5545,
+      "collision_quantized": true
+    },
+    {
+      "id": "p00270",
+      "source_triangles": 35526,
+      "render_triangles": 35526,
+      "collision_triangles": 5083,
+      "collision_quantized": true
+    },
+    {
+      "id": "p00271",
+      "source_triangles": 28,
+      "render_triangles": 28,
+      "collision_triangles": 28,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00272",
+      "source_triangles": 344,
+      "render_triangles": 344,
+      "collision_triangles": 344,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00273",
+      "source_triangles": 264,
+      "render_triangles": 264,
+      "collision_triangles": 264,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00274",
+      "source_triangles": 270602,
+      "render_triangles": 270600,
+      "collision_triangles": 23844,
+      "collision_quantized": true
+    },
+    {
+      "id": "p00275",
+      "source_triangles": 1704,
+      "render_triangles": 1704,
+      "collision_triangles": 1704,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00276",
+      "source_triangles": 1704,
+      "render_triangles": 1704,
+      "collision_triangles": 1704,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00277",
+      "source_triangles": 1704,
+      "render_triangles": 1704,
+      "collision_triangles": 1704,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00278",
+      "source_triangles": 1704,
+      "render_triangles": 1704,
+      "collision_triangles": 1704,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00279",
+      "source_triangles": 6296,
+      "render_triangles": 6296,
+      "collision_triangles": 6296,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00280",
+      "source_triangles": 1352,
+      "render_triangles": 1352,
+      "collision_triangles": 1352,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00281",
+      "source_triangles": 1352,
+      "render_triangles": 1352,
+      "collision_triangles": 1352,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00282",
+      "source_triangles": 1356,
+      "render_triangles": 1356,
+      "collision_triangles": 1356,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00283",
+      "source_triangles": 1352,
+      "render_triangles": 1352,
+      "collision_triangles": 1352,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00284",
+      "source_triangles": 4756,
+      "render_triangles": 4756,
+      "collision_triangles": 4756,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00285",
+      "source_triangles": 1168,
+      "render_triangles": 1168,
+      "collision_triangles": 1168,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00286",
+      "source_triangles": 2236,
+      "render_triangles": 2236,
+      "collision_triangles": 2236,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00287",
+      "source_triangles": 2236,
+      "render_triangles": 2236,
+      "collision_triangles": 2236,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00288",
+      "source_triangles": 2236,
+      "render_triangles": 2236,
+      "collision_triangles": 2236,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00289",
+      "source_triangles": 2236,
+      "render_triangles": 2236,
+      "collision_triangles": 2236,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00290",
+      "source_triangles": 1732,
+      "render_triangles": 1732,
+      "collision_triangles": 1732,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00291",
+      "source_triangles": 376,
+      "render_triangles": 376,
+      "collision_triangles": 376,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00292",
+      "source_triangles": 13240,
+      "render_triangles": 13240,
+      "collision_triangles": 13240,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00293",
+      "source_triangles": 180,
+      "render_triangles": 180,
+      "collision_triangles": 180,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00294",
+      "source_triangles": 2120,
+      "render_triangles": 2120,
+      "collision_triangles": 2120,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00295",
+      "source_triangles": 968,
+      "render_triangles": 968,
+      "collision_triangles": 968,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00296",
+      "source_triangles": 500,
+      "render_triangles": 500,
+      "collision_triangles": 500,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00297",
+      "source_triangles": 500,
+      "render_triangles": 500,
+      "collision_triangles": 500,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00298",
+      "source_triangles": 579,
+      "render_triangles": 579,
+      "collision_triangles": 579,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00299",
+      "source_triangles": 580,
+      "render_triangles": 580,
+      "collision_triangles": 580,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00300",
+      "source_triangles": 580,
+      "render_triangles": 580,
+      "collision_triangles": 580,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00301",
+      "source_triangles": 580,
+      "render_triangles": 580,
+      "collision_triangles": 580,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00302",
+      "source_triangles": 336,
+      "render_triangles": 336,
+      "collision_triangles": 336,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00303",
+      "source_triangles": 336,
+      "render_triangles": 336,
+      "collision_triangles": 336,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00304",
+      "source_triangles": 336,
+      "render_triangles": 336,
+      "collision_triangles": 336,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00305",
+      "source_triangles": 336,
+      "render_triangles": 336,
+      "collision_triangles": 336,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00306",
+      "source_triangles": 15996,
+      "render_triangles": 15996,
+      "collision_triangles": 1054,
+      "collision_quantized": true
+    },
+    {
+      "id": "p00307",
+      "source_triangles": 4344,
+      "render_triangles": 4344,
+      "collision_triangles": 4344,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00308",
+      "source_triangles": 828,
+      "render_triangles": 828,
+      "collision_triangles": 828,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00309",
+      "source_triangles": 4346,
+      "render_triangles": 4345,
+      "collision_triangles": 4345,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00310",
+      "source_triangles": 828,
+      "render_triangles": 828,
+      "collision_triangles": 828,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00311",
+      "source_triangles": 2516,
+      "render_triangles": 2516,
+      "collision_triangles": 2516,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00312",
+      "source_triangles": 12,
+      "render_triangles": 12,
+      "collision_triangles": 12,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00313",
+      "source_triangles": 12,
+      "render_triangles": 12,
+      "collision_triangles": 12,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00314",
+      "source_triangles": 12,
+      "render_triangles": 12,
+      "collision_triangles": 12,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00315",
+      "source_triangles": 12,
+      "render_triangles": 12,
+      "collision_triangles": 12,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00316",
+      "source_triangles": 1004,
+      "render_triangles": 1004,
+      "collision_triangles": 1004,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00317",
+      "source_triangles": 1004,
+      "render_triangles": 1004,
+      "collision_triangles": 1004,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00318",
+      "source_triangles": 6412,
+      "render_triangles": 6412,
+      "collision_triangles": 6412,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00319",
+      "source_triangles": 6412,
+      "render_triangles": 6412,
+      "collision_triangles": 6412,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00320",
+      "source_triangles": 1860,
+      "render_triangles": 1860,
+      "collision_triangles": 1860,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00321",
+      "source_triangles": 1856,
+      "render_triangles": 1856,
+      "collision_triangles": 1856,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00322",
+      "source_triangles": 1860,
+      "render_triangles": 1860,
+      "collision_triangles": 1860,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00323",
+      "source_triangles": 61578,
+      "render_triangles": 61578,
+      "collision_triangles": 7340,
+      "collision_quantized": true
+    },
+    {
+      "id": "p00324",
+      "source_triangles": 1860,
+      "render_triangles": 1860,
+      "collision_triangles": 1860,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00325",
+      "source_triangles": 1856,
+      "render_triangles": 1856,
+      "collision_triangles": 1856,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00326",
+      "source_triangles": 1860,
+      "render_triangles": 1860,
+      "collision_triangles": 1860,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00327",
+      "source_triangles": 764,
+      "render_triangles": 764,
+      "collision_triangles": 764,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00328",
+      "source_triangles": 1860,
+      "render_triangles": 1860,
+      "collision_triangles": 1860,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00329",
+      "source_triangles": 1856,
+      "render_triangles": 1856,
+      "collision_triangles": 1856,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00330",
+      "source_triangles": 1860,
+      "render_triangles": 1860,
+      "collision_triangles": 1860,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00331",
+      "source_triangles": 1860,
+      "render_triangles": 1860,
+      "collision_triangles": 1860,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00332",
+      "source_triangles": 1856,
+      "render_triangles": 1856,
+      "collision_triangles": 1856,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00333",
+      "source_triangles": 1860,
+      "render_triangles": 1860,
+      "collision_triangles": 1860,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00334",
+      "source_triangles": 3192,
+      "render_triangles": 3192,
+      "collision_triangles": 3192,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00335",
+      "source_triangles": 3980,
+      "render_triangles": 3980,
+      "collision_triangles": 3980,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00336",
+      "source_triangles": 640,
+      "render_triangles": 640,
+      "collision_triangles": 640,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00337",
+      "source_triangles": 2332,
+      "render_triangles": 2332,
+      "collision_triangles": 2332,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00338",
+      "source_triangles": 265415,
+      "render_triangles": 265415,
+      "collision_triangles": 15229,
+      "collision_quantized": true
+    },
+    {
+      "id": "p00339",
+      "source_triangles": 2316,
+      "render_triangles": 2316,
+      "collision_triangles": 2316,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00340",
+      "source_triangles": 4040,
+      "render_triangles": 4040,
+      "collision_triangles": 4040,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00341",
+      "source_triangles": 180,
+      "render_triangles": 180,
+      "collision_triangles": 180,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00342",
+      "source_triangles": 4950,
+      "render_triangles": 4950,
+      "collision_triangles": 4950,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00343",
+      "source_triangles": 86,
+      "render_triangles": 86,
+      "collision_triangles": 86,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00344",
+      "source_triangles": 284,
+      "render_triangles": 284,
+      "collision_triangles": 284,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00345",
+      "source_triangles": 476,
+      "render_triangles": 476,
+      "collision_triangles": 476,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00346",
+      "source_triangles": 28,
+      "render_triangles": 28,
+      "collision_triangles": 28,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00347",
+      "source_triangles": 35526,
+      "render_triangles": 35526,
+      "collision_triangles": 5545,
+      "collision_quantized": true
+    },
+    {
+      "id": "p00348",
+      "source_triangles": 35526,
+      "render_triangles": 35526,
+      "collision_triangles": 5566,
+      "collision_quantized": true
+    },
+    {
+      "id": "p00349",
+      "source_triangles": 28,
+      "render_triangles": 28,
+      "collision_triangles": 28,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00350",
+      "source_triangles": 344,
+      "render_triangles": 344,
+      "collision_triangles": 344,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00351",
+      "source_triangles": 264,
+      "render_triangles": 264,
+      "collision_triangles": 264,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00352",
+      "source_triangles": 270602,
+      "render_triangles": 270601,
+      "collision_triangles": 23869,
+      "collision_quantized": true
+    },
+    {
+      "id": "p00353",
+      "source_triangles": 1704,
+      "render_triangles": 1704,
+      "collision_triangles": 1704,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00354",
+      "source_triangles": 1704,
+      "render_triangles": 1704,
+      "collision_triangles": 1704,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00355",
+      "source_triangles": 1704,
+      "render_triangles": 1704,
+      "collision_triangles": 1704,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00356",
+      "source_triangles": 1704,
+      "render_triangles": 1704,
+      "collision_triangles": 1704,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00357",
+      "source_triangles": 6296,
+      "render_triangles": 6296,
+      "collision_triangles": 6296,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00358",
+      "source_triangles": 1352,
+      "render_triangles": 1352,
+      "collision_triangles": 1352,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00359",
+      "source_triangles": 1352,
+      "render_triangles": 1352,
+      "collision_triangles": 1352,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00360",
+      "source_triangles": 1356,
+      "render_triangles": 1356,
+      "collision_triangles": 1356,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00361",
+      "source_triangles": 1352,
+      "render_triangles": 1352,
+      "collision_triangles": 1352,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00362",
+      "source_triangles": 4756,
+      "render_triangles": 4756,
+      "collision_triangles": 4756,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00363",
+      "source_triangles": 1168,
+      "render_triangles": 1168,
+      "collision_triangles": 1168,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00364",
+      "source_triangles": 2236,
+      "render_triangles": 2236,
+      "collision_triangles": 2236,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00365",
+      "source_triangles": 2236,
+      "render_triangles": 2236,
+      "collision_triangles": 2236,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00366",
+      "source_triangles": 2236,
+      "render_triangles": 2236,
+      "collision_triangles": 2236,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00367",
+      "source_triangles": 2236,
+      "render_triangles": 2236,
+      "collision_triangles": 2236,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00368",
+      "source_triangles": 1732,
+      "render_triangles": 1732,
+      "collision_triangles": 1732,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00369",
+      "source_triangles": 376,
+      "render_triangles": 376,
+      "collision_triangles": 376,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00370",
+      "source_triangles": 13240,
+      "render_triangles": 13240,
+      "collision_triangles": 13240,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00371",
+      "source_triangles": 180,
+      "render_triangles": 180,
+      "collision_triangles": 180,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00372",
+      "source_triangles": 2120,
+      "render_triangles": 2120,
+      "collision_triangles": 2120,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00373",
+      "source_triangles": 968,
+      "render_triangles": 968,
+      "collision_triangles": 968,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00374",
+      "source_triangles": 500,
+      "render_triangles": 500,
+      "collision_triangles": 500,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00375",
+      "source_triangles": 500,
+      "render_triangles": 500,
+      "collision_triangles": 500,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00376",
+      "source_triangles": 579,
+      "render_triangles": 579,
+      "collision_triangles": 579,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00377",
+      "source_triangles": 580,
+      "render_triangles": 580,
+      "collision_triangles": 580,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00378",
+      "source_triangles": 580,
+      "render_triangles": 580,
+      "collision_triangles": 580,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00379",
+      "source_triangles": 579,
+      "render_triangles": 579,
+      "collision_triangles": 579,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00380",
+      "source_triangles": 336,
+      "render_triangles": 336,
+      "collision_triangles": 336,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00381",
+      "source_triangles": 336,
+      "render_triangles": 336,
+      "collision_triangles": 336,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00382",
+      "source_triangles": 336,
+      "render_triangles": 336,
+      "collision_triangles": 336,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00383",
+      "source_triangles": 336,
+      "render_triangles": 336,
+      "collision_triangles": 336,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00384",
+      "source_triangles": 15996,
+      "render_triangles": 15996,
+      "collision_triangles": 1061,
+      "collision_quantized": true
+    },
+    {
+      "id": "p00385",
+      "source_triangles": 4344,
+      "render_triangles": 4344,
+      "collision_triangles": 4344,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00386",
+      "source_triangles": 828,
+      "render_triangles": 828,
+      "collision_triangles": 828,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00387",
+      "source_triangles": 4346,
+      "render_triangles": 4346,
+      "collision_triangles": 4346,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00388",
+      "source_triangles": 828,
+      "render_triangles": 828,
+      "collision_triangles": 828,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00389",
+      "source_triangles": 2516,
+      "render_triangles": 2516,
+      "collision_triangles": 2516,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00390",
+      "source_triangles": 12,
+      "render_triangles": 12,
+      "collision_triangles": 12,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00391",
+      "source_triangles": 12,
+      "render_triangles": 12,
+      "collision_triangles": 12,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00392",
+      "source_triangles": 12,
+      "render_triangles": 12,
+      "collision_triangles": 12,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00393",
+      "source_triangles": 12,
+      "render_triangles": 12,
+      "collision_triangles": 12,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00394",
+      "source_triangles": 1004,
+      "render_triangles": 1004,
+      "collision_triangles": 1004,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00395",
+      "source_triangles": 1004,
+      "render_triangles": 1004,
+      "collision_triangles": 1004,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00396",
+      "source_triangles": 6412,
+      "render_triangles": 6412,
+      "collision_triangles": 6412,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00397",
+      "source_triangles": 6412,
+      "render_triangles": 6412,
+      "collision_triangles": 6412,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00398",
+      "source_triangles": 1860,
+      "render_triangles": 1860,
+      "collision_triangles": 1860,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00399",
+      "source_triangles": 1856,
+      "render_triangles": 1856,
+      "collision_triangles": 1856,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00400",
+      "source_triangles": 1860,
+      "render_triangles": 1860,
+      "collision_triangles": 1860,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00401",
+      "source_triangles": 61578,
+      "render_triangles": 61578,
+      "collision_triangles": 7325,
+      "collision_quantized": true
+    },
+    {
+      "id": "p00402",
+      "source_triangles": 1860,
+      "render_triangles": 1860,
+      "collision_triangles": 1860,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00403",
+      "source_triangles": 1856,
+      "render_triangles": 1856,
+      "collision_triangles": 1856,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00404",
+      "source_triangles": 1860,
+      "render_triangles": 1860,
+      "collision_triangles": 1860,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00405",
+      "source_triangles": 764,
+      "render_triangles": 764,
+      "collision_triangles": 764,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00406",
+      "source_triangles": 1860,
+      "render_triangles": 1860,
+      "collision_triangles": 1860,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00407",
+      "source_triangles": 1856,
+      "render_triangles": 1856,
+      "collision_triangles": 1856,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00408",
+      "source_triangles": 1860,
+      "render_triangles": 1860,
+      "collision_triangles": 1860,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00409",
+      "source_triangles": 1860,
+      "render_triangles": 1860,
+      "collision_triangles": 1860,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00410",
+      "source_triangles": 1856,
+      "render_triangles": 1856,
+      "collision_triangles": 1856,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00411",
+      "source_triangles": 1860,
+      "render_triangles": 1860,
+      "collision_triangles": 1860,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00412",
+      "source_triangles": 3192,
+      "render_triangles": 3192,
+      "collision_triangles": 3192,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00413",
+      "source_triangles": 3980,
+      "render_triangles": 3980,
+      "collision_triangles": 3980,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00414",
+      "source_triangles": 640,
+      "render_triangles": 640,
+      "collision_triangles": 640,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00415",
+      "source_triangles": 2332,
+      "render_triangles": 2332,
+      "collision_triangles": 2332,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00416",
+      "source_triangles": 265416,
+      "render_triangles": 265413,
+      "collision_triangles": 15212,
+      "collision_quantized": true
+    },
+    {
+      "id": "p00417",
+      "source_triangles": 2316,
+      "render_triangles": 2316,
+      "collision_triangles": 2316,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00418",
+      "source_triangles": 4040,
+      "render_triangles": 4040,
+      "collision_triangles": 4040,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00419",
+      "source_triangles": 180,
+      "render_triangles": 180,
+      "collision_triangles": 180,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00420",
+      "source_triangles": 500,
+      "render_triangles": 500,
+      "collision_triangles": 500,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00421",
+      "source_triangles": 500,
+      "render_triangles": 500,
+      "collision_triangles": 500,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00422",
+      "source_triangles": 500,
+      "render_triangles": 500,
+      "collision_triangles": 500,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00423",
+      "source_triangles": 12,
+      "render_triangles": 12,
+      "collision_triangles": 12,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00424",
+      "source_triangles": 12,
+      "render_triangles": 12,
+      "collision_triangles": 12,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00425",
+      "source_triangles": 12,
+      "render_triangles": 12,
+      "collision_triangles": 12,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00426",
+      "source_triangles": 12,
+      "render_triangles": 12,
+      "collision_triangles": 12,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00427",
+      "source_triangles": 12,
+      "render_triangles": 12,
+      "collision_triangles": 12,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00428",
+      "source_triangles": 12,
+      "render_triangles": 12,
+      "collision_triangles": 12,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00429",
+      "source_triangles": 12,
+      "render_triangles": 12,
+      "collision_triangles": 12,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00430",
+      "source_triangles": 12,
+      "render_triangles": 12,
+      "collision_triangles": 12,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00431",
+      "source_triangles": 12,
+      "render_triangles": 12,
+      "collision_triangles": 12,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00432",
+      "source_triangles": 20,
+      "render_triangles": 20,
+      "collision_triangles": 20,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00433",
+      "source_triangles": 1978,
+      "render_triangles": 1978,
+      "collision_triangles": 1978,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00434",
+      "source_triangles": 12,
+      "render_triangles": 12,
+      "collision_triangles": 12,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00435",
+      "source_triangles": 26,
+      "render_triangles": 26,
+      "collision_triangles": 26,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00436",
+      "source_triangles": 12,
+      "render_triangles": 12,
+      "collision_triangles": 12,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00437",
+      "source_triangles": 12,
+      "render_triangles": 12,
+      "collision_triangles": 12,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00438",
+      "source_triangles": 12,
+      "render_triangles": 12,
+      "collision_triangles": 12,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00439",
+      "source_triangles": 240,
+      "render_triangles": 240,
+      "collision_triangles": 240,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00440",
+      "source_triangles": 240,
+      "render_triangles": 240,
+      "collision_triangles": 240,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00441",
+      "source_triangles": 60,
+      "render_triangles": 60,
+      "collision_triangles": 60,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00442",
+      "source_triangles": 60,
+      "render_triangles": 60,
+      "collision_triangles": 60,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00443",
+      "source_triangles": 36,
+      "render_triangles": 36,
+      "collision_triangles": 36,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00444",
+      "source_triangles": 36622,
+      "render_triangles": 36622,
+      "collision_triangles": 35080,
+      "collision_quantized": true
+    },
+    {
+      "id": "p00445",
+      "source_triangles": 35526,
+      "render_triangles": 35526,
+      "collision_triangles": 5434,
+      "collision_quantized": true
+    },
+    {
+      "id": "p00446",
+      "source_triangles": 35526,
+      "render_triangles": 35526,
+      "collision_triangles": 6568,
+      "collision_quantized": true
+    },
+    {
+      "id": "p00447",
+      "source_triangles": 20,
+      "render_triangles": 20,
+      "collision_triangles": 20,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00448",
+      "source_triangles": 500,
+      "render_triangles": 500,
+      "collision_triangles": 500,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00449",
+      "source_triangles": 500,
+      "render_triangles": 500,
+      "collision_triangles": 500,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00450",
+      "source_triangles": 500,
+      "render_triangles": 500,
+      "collision_triangles": 500,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00451",
+      "source_triangles": 12,
+      "render_triangles": 12,
+      "collision_triangles": 12,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00452",
+      "source_triangles": 12,
+      "render_triangles": 12,
+      "collision_triangles": 12,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00453",
+      "source_triangles": 12,
+      "render_triangles": 12,
+      "collision_triangles": 12,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00454",
+      "source_triangles": 12,
+      "render_triangles": 12,
+      "collision_triangles": 12,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00455",
+      "source_triangles": 12,
+      "render_triangles": 12,
+      "collision_triangles": 12,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00456",
+      "source_triangles": 12,
+      "render_triangles": 12,
+      "collision_triangles": 12,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00457",
+      "source_triangles": 240,
+      "render_triangles": 240,
+      "collision_triangles": 240,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00458",
+      "source_triangles": 240,
+      "render_triangles": 240,
+      "collision_triangles": 240,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00459",
+      "source_triangles": 12,
+      "render_triangles": 12,
+      "collision_triangles": 12,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00460",
+      "source_triangles": 60,
+      "render_triangles": 60,
+      "collision_triangles": 60,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00461",
+      "source_triangles": 60,
+      "render_triangles": 60,
+      "collision_triangles": 60,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00462",
+      "source_triangles": 1978,
+      "render_triangles": 1978,
+      "collision_triangles": 1978,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00463",
+      "source_triangles": 12,
+      "render_triangles": 12,
+      "collision_triangles": 12,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00464",
+      "source_triangles": 26,
+      "render_triangles": 26,
+      "collision_triangles": 26,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00465",
+      "source_triangles": 12,
+      "render_triangles": 12,
+      "collision_triangles": 12,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00466",
+      "source_triangles": 12,
+      "render_triangles": 12,
+      "collision_triangles": 12,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00467",
+      "source_triangles": 12,
+      "render_triangles": 12,
+      "collision_triangles": 12,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00468",
+      "source_triangles": 12,
+      "render_triangles": 12,
+      "collision_triangles": 12,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00469",
+      "source_triangles": 12,
+      "render_triangles": 12,
+      "collision_triangles": 12,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00470",
+      "source_triangles": 36,
+      "render_triangles": 36,
+      "collision_triangles": 36,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00471",
+      "source_triangles": 36626,
+      "render_triangles": 36626,
+      "collision_triangles": 35086,
+      "collision_quantized": true
+    },
+    {
+      "id": "p00472",
+      "source_triangles": 35526,
+      "render_triangles": 35526,
+      "collision_triangles": 5425,
+      "collision_quantized": true
+    },
+    {
+      "id": "p00473",
+      "source_triangles": 35526,
+      "render_triangles": 35526,
+      "collision_triangles": 6576,
+      "collision_quantized": true
+    },
+    {
+      "id": "p00474",
+      "source_triangles": 1985,
+      "render_triangles": 1985,
+      "collision_triangles": 1985,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00475",
+      "source_triangles": 1985,
+      "render_triangles": 1984,
+      "collision_triangles": 1984,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00476",
+      "source_triangles": 2116,
+      "render_triangles": 2116,
+      "collision_triangles": 2116,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00477",
+      "source_triangles": 76402,
+      "render_triangles": 76395,
+      "collision_triangles": 7631,
+      "collision_quantized": true
+    },
+    {
+      "id": "p00478",
+      "source_triangles": 2848,
+      "render_triangles": 2848,
+      "collision_triangles": 2848,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00479",
+      "source_triangles": 2848,
+      "render_triangles": 2848,
+      "collision_triangles": 2848,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00480",
+      "source_triangles": 2848,
+      "render_triangles": 2848,
+      "collision_triangles": 2848,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00481",
+      "source_triangles": 2848,
+      "render_triangles": 2848,
+      "collision_triangles": 2848,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00482",
+      "source_triangles": 2848,
+      "render_triangles": 2848,
+      "collision_triangles": 2848,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00483",
+      "source_triangles": 2848,
+      "render_triangles": 2848,
+      "collision_triangles": 2848,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00484",
+      "source_triangles": 1104,
+      "render_triangles": 1104,
+      "collision_triangles": 1104,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00485",
+      "source_triangles": 1104,
+      "render_triangles": 1104,
+      "collision_triangles": 1104,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00486",
+      "source_triangles": 1104,
+      "render_triangles": 1104,
+      "collision_triangles": 1104,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00487",
+      "source_triangles": 196,
+      "render_triangles": 196,
+      "collision_triangles": 196,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00488",
+      "source_triangles": 696,
+      "render_triangles": 696,
+      "collision_triangles": 696,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00489",
+      "source_triangles": 696,
+      "render_triangles": 696,
+      "collision_triangles": 696,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00490",
+      "source_triangles": 696,
+      "render_triangles": 696,
+      "collision_triangles": 696,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00491",
+      "source_triangles": 696,
+      "render_triangles": 696,
+      "collision_triangles": 696,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00492",
+      "source_triangles": 696,
+      "render_triangles": 696,
+      "collision_triangles": 696,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00493",
+      "source_triangles": 1036,
+      "render_triangles": 1036,
+      "collision_triangles": 1036,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00494",
+      "source_triangles": 1036,
+      "render_triangles": 1036,
+      "collision_triangles": 1036,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00495",
+      "source_triangles": 612,
+      "render_triangles": 612,
+      "collision_triangles": 612,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00496",
+      "source_triangles": 612,
+      "render_triangles": 612,
+      "collision_triangles": 612,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00497",
+      "source_triangles": 2872,
+      "render_triangles": 2872,
+      "collision_triangles": 2872,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00498",
+      "source_triangles": 612,
+      "render_triangles": 612,
+      "collision_triangles": 612,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00499",
+      "source_triangles": 612,
+      "render_triangles": 612,
+      "collision_triangles": 612,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00500",
+      "source_triangles": 612,
+      "render_triangles": 612,
+      "collision_triangles": 612,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00501",
+      "source_triangles": 2872,
+      "render_triangles": 2872,
+      "collision_triangles": 2872,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00502",
+      "source_triangles": 612,
+      "render_triangles": 612,
+      "collision_triangles": 612,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00503",
+      "source_triangles": 220,
+      "render_triangles": 220,
+      "collision_triangles": 220,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00504",
+      "source_triangles": 12,
+      "render_triangles": 12,
+      "collision_triangles": 12,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00505",
+      "source_triangles": 12,
+      "render_triangles": 12,
+      "collision_triangles": 12,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00506",
+      "source_triangles": 12,
+      "render_triangles": 12,
+      "collision_triangles": 12,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00507",
+      "source_triangles": 28,
+      "render_triangles": 28,
+      "collision_triangles": 28,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00508",
+      "source_triangles": 314,
+      "render_triangles": 314,
+      "collision_triangles": 314,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00509",
+      "source_triangles": 60,
+      "render_triangles": 60,
+      "collision_triangles": 60,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00510",
+      "source_triangles": 180,
+      "render_triangles": 180,
+      "collision_triangles": 180,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00511",
+      "source_triangles": 348,
+      "render_triangles": 348,
+      "collision_triangles": 348,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00512",
+      "source_triangles": 254,
+      "render_triangles": 254,
+      "collision_triangles": 254,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00513",
+      "source_triangles": 348,
+      "render_triangles": 348,
+      "collision_triangles": 348,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00514",
+      "source_triangles": 216,
+      "render_triangles": 216,
+      "collision_triangles": 216,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00515",
+      "source_triangles": 268,
+      "render_triangles": 268,
+      "collision_triangles": 268,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00516",
+      "source_triangles": 380,
+      "render_triangles": 380,
+      "collision_triangles": 380,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00517",
+      "source_triangles": 20,
+      "render_triangles": 20,
+      "collision_triangles": 20,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00518",
+      "source_triangles": 22204,
+      "render_triangles": 22203,
+      "collision_triangles": 2340,
+      "collision_quantized": true
+    },
+    {
+      "id": "p00519",
+      "source_triangles": 26422,
+      "render_triangles": 26422,
+      "collision_triangles": 3823,
+      "collision_quantized": true
+    },
+    {
+      "id": "p00520",
+      "source_triangles": 26422,
+      "render_triangles": 26422,
+      "collision_triangles": 4312,
+      "collision_quantized": true
+    },
+    {
+      "id": "p00521",
+      "source_triangles": 26422,
+      "render_triangles": 26422,
+      "collision_triangles": 4251,
+      "collision_quantized": true
+    },
+    {
+      "id": "p00522",
+      "source_triangles": 26422,
+      "render_triangles": 26422,
+      "collision_triangles": 3834,
+      "collision_quantized": true
+    },
+    {
+      "id": "p00523",
+      "source_triangles": 26422,
+      "render_triangles": 26422,
+      "collision_triangles": 4237,
+      "collision_quantized": true
+    },
+    {
+      "id": "p00524",
+      "source_triangles": 26422,
+      "render_triangles": 26422,
+      "collision_triangles": 4196,
+      "collision_quantized": true
+    },
+    {
+      "id": "p00525",
+      "source_triangles": 1985,
+      "render_triangles": 1985,
+      "collision_triangles": 1985,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00526",
+      "source_triangles": 1985,
+      "render_triangles": 1985,
+      "collision_triangles": 1985,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00527",
+      "source_triangles": 2116,
+      "render_triangles": 2115,
+      "collision_triangles": 2115,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00528",
+      "source_triangles": 76402,
+      "render_triangles": 76399,
+      "collision_triangles": 7617,
+      "collision_quantized": true
+    },
+    {
+      "id": "p00529",
+      "source_triangles": 2848,
+      "render_triangles": 2848,
+      "collision_triangles": 2848,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00530",
+      "source_triangles": 2848,
+      "render_triangles": 2848,
+      "collision_triangles": 2848,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00531",
+      "source_triangles": 2848,
+      "render_triangles": 2848,
+      "collision_triangles": 2848,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00532",
+      "source_triangles": 2848,
+      "render_triangles": 2848,
+      "collision_triangles": 2848,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00533",
+      "source_triangles": 2848,
+      "render_triangles": 2848,
+      "collision_triangles": 2848,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00534",
+      "source_triangles": 2848,
+      "render_triangles": 2848,
+      "collision_triangles": 2848,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00535",
+      "source_triangles": 1104,
+      "render_triangles": 1104,
+      "collision_triangles": 1104,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00536",
+      "source_triangles": 1104,
+      "render_triangles": 1104,
+      "collision_triangles": 1104,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00537",
+      "source_triangles": 1104,
+      "render_triangles": 1104,
+      "collision_triangles": 1104,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00538",
+      "source_triangles": 196,
+      "render_triangles": 196,
+      "collision_triangles": 196,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00539",
+      "source_triangles": 696,
+      "render_triangles": 696,
+      "collision_triangles": 696,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00540",
+      "source_triangles": 696,
+      "render_triangles": 696,
+      "collision_triangles": 696,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00541",
+      "source_triangles": 696,
+      "render_triangles": 696,
+      "collision_triangles": 696,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00542",
+      "source_triangles": 696,
+      "render_triangles": 696,
+      "collision_triangles": 696,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00543",
+      "source_triangles": 696,
+      "render_triangles": 696,
+      "collision_triangles": 696,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00544",
+      "source_triangles": 1036,
+      "render_triangles": 1036,
+      "collision_triangles": 1036,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00545",
+      "source_triangles": 1036,
+      "render_triangles": 1036,
+      "collision_triangles": 1036,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00546",
+      "source_triangles": 612,
+      "render_triangles": 612,
+      "collision_triangles": 612,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00547",
+      "source_triangles": 612,
+      "render_triangles": 612,
+      "collision_triangles": 612,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00548",
+      "source_triangles": 2872,
+      "render_triangles": 2872,
+      "collision_triangles": 2872,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00549",
+      "source_triangles": 612,
+      "render_triangles": 612,
+      "collision_triangles": 612,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00550",
+      "source_triangles": 612,
+      "render_triangles": 612,
+      "collision_triangles": 612,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00551",
+      "source_triangles": 612,
+      "render_triangles": 612,
+      "collision_triangles": 612,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00552",
+      "source_triangles": 2872,
+      "render_triangles": 2872,
+      "collision_triangles": 2872,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00553",
+      "source_triangles": 612,
+      "render_triangles": 612,
+      "collision_triangles": 612,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00554",
+      "source_triangles": 220,
+      "render_triangles": 220,
+      "collision_triangles": 220,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00555",
+      "source_triangles": 12,
+      "render_triangles": 12,
+      "collision_triangles": 12,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00556",
+      "source_triangles": 12,
+      "render_triangles": 12,
+      "collision_triangles": 12,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00557",
+      "source_triangles": 12,
+      "render_triangles": 12,
+      "collision_triangles": 12,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00558",
+      "source_triangles": 28,
+      "render_triangles": 28,
+      "collision_triangles": 28,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00559",
+      "source_triangles": 314,
+      "render_triangles": 314,
+      "collision_triangles": 314,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00560",
+      "source_triangles": 60,
+      "render_triangles": 60,
+      "collision_triangles": 60,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00561",
+      "source_triangles": 180,
+      "render_triangles": 180,
+      "collision_triangles": 180,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00562",
+      "source_triangles": 348,
+      "render_triangles": 348,
+      "collision_triangles": 348,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00563",
+      "source_triangles": 254,
+      "render_triangles": 254,
+      "collision_triangles": 254,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00564",
+      "source_triangles": 348,
+      "render_triangles": 348,
+      "collision_triangles": 348,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00565",
+      "source_triangles": 216,
+      "render_triangles": 216,
+      "collision_triangles": 216,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00566",
+      "source_triangles": 268,
+      "render_triangles": 268,
+      "collision_triangles": 268,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00567",
+      "source_triangles": 380,
+      "render_triangles": 380,
+      "collision_triangles": 380,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00568",
+      "source_triangles": 20,
+      "render_triangles": 20,
+      "collision_triangles": 20,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00569",
+      "source_triangles": 22204,
+      "render_triangles": 22203,
+      "collision_triangles": 2346,
+      "collision_quantized": true
+    },
+    {
+      "id": "p00570",
+      "source_triangles": 26422,
+      "render_triangles": 26422,
+      "collision_triangles": 3863,
+      "collision_quantized": true
+    },
+    {
+      "id": "p00571",
+      "source_triangles": 26422,
+      "render_triangles": 26422,
+      "collision_triangles": 4314,
+      "collision_quantized": true
+    },
+    {
+      "id": "p00572",
+      "source_triangles": 26422,
+      "render_triangles": 26422,
+      "collision_triangles": 4266,
+      "collision_quantized": true
+    },
+    {
+      "id": "p00573",
+      "source_triangles": 26422,
+      "render_triangles": 26422,
+      "collision_triangles": 3858,
+      "collision_quantized": true
+    },
+    {
+      "id": "p00574",
+      "source_triangles": 26422,
+      "render_triangles": 26422,
+      "collision_triangles": 4264,
+      "collision_quantized": true
+    },
+    {
+      "id": "p00575",
+      "source_triangles": 26422,
+      "render_triangles": 26422,
+      "collision_triangles": 4215,
+      "collision_quantized": true
+    },
+    {
+      "id": "p00576",
+      "source_triangles": 118,
+      "render_triangles": 118,
+      "collision_triangles": 118,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00577",
+      "source_triangles": 36,
+      "render_triangles": 36,
+      "collision_triangles": 36,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00578",
+      "source_triangles": 36,
+      "render_triangles": 36,
+      "collision_triangles": 36,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00579",
+      "source_triangles": 28,
+      "render_triangles": 28,
+      "collision_triangles": 28,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00580",
+      "source_triangles": 118,
+      "render_triangles": 118,
+      "collision_triangles": 118,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00581",
+      "source_triangles": 36,
+      "render_triangles": 36,
+      "collision_triangles": 36,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00582",
+      "source_triangles": 36,
+      "render_triangles": 36,
+      "collision_triangles": 36,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00583",
+      "source_triangles": 28,
+      "render_triangles": 28,
+      "collision_triangles": 28,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00584",
+      "source_triangles": 3094,
+      "render_triangles": 3094,
+      "collision_triangles": 3094,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00585",
+      "source_triangles": 3094,
+      "render_triangles": 3094,
+      "collision_triangles": 3094,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00586",
+      "source_triangles": 28,
+      "render_triangles": 28,
+      "collision_triangles": 28,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00587",
+      "source_triangles": 28,
+      "render_triangles": 28,
+      "collision_triangles": 28,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00588",
+      "source_triangles": 35526,
+      "render_triangles": 35525,
+      "collision_triangles": 5428,
+      "collision_quantized": true
+    },
+    {
+      "id": "p00589",
+      "source_triangles": 35526,
+      "render_triangles": 35526,
+      "collision_triangles": 5446,
+      "collision_quantized": true
+    },
+    {
+      "id": "p00590",
+      "source_triangles": 2982,
+      "render_triangles": 2982,
+      "collision_triangles": 2982,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00591",
+      "source_triangles": 4016,
+      "render_triangles": 4016,
+      "collision_triangles": 4016,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00592",
+      "source_triangles": 7726,
+      "render_triangles": 7726,
+      "collision_triangles": 7726,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00593",
+      "source_triangles": 7732,
+      "render_triangles": 7732,
+      "collision_triangles": 7732,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00594",
+      "source_triangles": 7730,
+      "render_triangles": 7730,
+      "collision_triangles": 7730,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00595",
+      "source_triangles": 110381,
+      "render_triangles": 110380,
+      "collision_triangles": 10157,
+      "collision_quantized": true
+    },
+    {
+      "id": "p00596",
+      "source_triangles": 7542,
+      "render_triangles": 7542,
+      "collision_triangles": 7542,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00597",
+      "source_triangles": 30640,
+      "render_triangles": 30640,
+      "collision_triangles": 2824,
+      "collision_quantized": true
+    },
+    {
+      "id": "p00598",
+      "source_triangles": 30639,
+      "render_triangles": 30639,
+      "collision_triangles": 2871,
+      "collision_quantized": true
+    },
+    {
+      "id": "p00599",
+      "source_triangles": 30650,
+      "render_triangles": 30650,
+      "collision_triangles": 2903,
+      "collision_quantized": true
+    },
+    {
+      "id": "p00600",
+      "source_triangles": 133062,
+      "render_triangles": 133062,
+      "collision_triangles": 12688,
+      "collision_quantized": true
+    },
+    {
+      "id": "p00601",
+      "source_triangles": 3064,
+      "render_triangles": 3064,
+      "collision_triangles": 3064,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00602",
+      "source_triangles": 3072,
+      "render_triangles": 3072,
+      "collision_triangles": 3072,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00603",
+      "source_triangles": 3072,
+      "render_triangles": 3072,
+      "collision_triangles": 3072,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00604",
+      "source_triangles": 1728,
+      "render_triangles": 1728,
+      "collision_triangles": 1728,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00605",
+      "source_triangles": 1728,
+      "render_triangles": 1728,
+      "collision_triangles": 1728,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00606",
+      "source_triangles": 4152,
+      "render_triangles": 4152,
+      "collision_triangles": 4152,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00607",
+      "source_triangles": 2408,
+      "render_triangles": 2408,
+      "collision_triangles": 2408,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00608",
+      "source_triangles": 2408,
+      "render_triangles": 2408,
+      "collision_triangles": 2408,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00609",
+      "source_triangles": 2408,
+      "render_triangles": 2408,
+      "collision_triangles": 2408,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00610",
+      "source_triangles": 1980,
+      "render_triangles": 1980,
+      "collision_triangles": 1980,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00611",
+      "source_triangles": 1066,
+      "render_triangles": 1066,
+      "collision_triangles": 1066,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00612",
+      "source_triangles": 1078,
+      "render_triangles": 1078,
+      "collision_triangles": 1078,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00613",
+      "source_triangles": 1068,
+      "render_triangles": 1068,
+      "collision_triangles": 1068,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00614",
+      "source_triangles": 1210,
+      "render_triangles": 1210,
+      "collision_triangles": 1210,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00615",
+      "source_triangles": 1210,
+      "render_triangles": 1210,
+      "collision_triangles": 1210,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00616",
+      "source_triangles": 138719,
+      "render_triangles": 138718,
+      "collision_triangles": 9757,
+      "collision_quantized": true
+    },
+    {
+      "id": "p00617",
+      "source_triangles": 2982,
+      "render_triangles": 2982,
+      "collision_triangles": 2982,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00618",
+      "source_triangles": 4016,
+      "render_triangles": 4016,
+      "collision_triangles": 4016,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00619",
+      "source_triangles": 7726,
+      "render_triangles": 7726,
+      "collision_triangles": 7726,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00620",
+      "source_triangles": 7732,
+      "render_triangles": 7732,
+      "collision_triangles": 7732,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00621",
+      "source_triangles": 7730,
+      "render_triangles": 7730,
+      "collision_triangles": 7730,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00622",
+      "source_triangles": 110376,
+      "render_triangles": 110376,
+      "collision_triangles": 9968,
+      "collision_quantized": true
+    },
+    {
+      "id": "p00623",
+      "source_triangles": 7542,
+      "render_triangles": 7542,
+      "collision_triangles": 7542,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00624",
+      "source_triangles": 30640,
+      "render_triangles": 30640,
+      "collision_triangles": 2879,
+      "collision_quantized": true
+    },
+    {
+      "id": "p00625",
+      "source_triangles": 30639,
+      "render_triangles": 30639,
+      "collision_triangles": 2870,
+      "collision_quantized": true
+    },
+    {
+      "id": "p00626",
+      "source_triangles": 30650,
+      "render_triangles": 30650,
+      "collision_triangles": 2945,
+      "collision_quantized": true
+    },
+    {
+      "id": "p00627",
+      "source_triangles": 133062,
+      "render_triangles": 133062,
+      "collision_triangles": 12764,
+      "collision_quantized": true
+    },
+    {
+      "id": "p00628",
+      "source_triangles": 3064,
+      "render_triangles": 3064,
+      "collision_triangles": 3064,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00629",
+      "source_triangles": 3072,
+      "render_triangles": 3072,
+      "collision_triangles": 3072,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00630",
+      "source_triangles": 3072,
+      "render_triangles": 3072,
+      "collision_triangles": 3072,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00631",
+      "source_triangles": 1728,
+      "render_triangles": 1728,
+      "collision_triangles": 1728,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00632",
+      "source_triangles": 1728,
+      "render_triangles": 1728,
+      "collision_triangles": 1728,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00633",
+      "source_triangles": 4152,
+      "render_triangles": 4152,
+      "collision_triangles": 4152,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00634",
+      "source_triangles": 2408,
+      "render_triangles": 2408,
+      "collision_triangles": 2408,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00635",
+      "source_triangles": 2408,
+      "render_triangles": 2408,
+      "collision_triangles": 2408,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00636",
+      "source_triangles": 2408,
+      "render_triangles": 2408,
+      "collision_triangles": 2408,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00637",
+      "source_triangles": 1980,
+      "render_triangles": 1980,
+      "collision_triangles": 1980,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00638",
+      "source_triangles": 1066,
+      "render_triangles": 1066,
+      "collision_triangles": 1066,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00639",
+      "source_triangles": 1078,
+      "render_triangles": 1078,
+      "collision_triangles": 1078,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00640",
+      "source_triangles": 1068,
+      "render_triangles": 1068,
+      "collision_triangles": 1068,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00641",
+      "source_triangles": 1210,
+      "render_triangles": 1210,
+      "collision_triangles": 1210,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00642",
+      "source_triangles": 1210,
+      "render_triangles": 1210,
+      "collision_triangles": 1210,
+      "collision_quantized": false
+    },
+    {
+      "id": "p00643",
+      "source_triangles": 138718,
+      "render_triangles": 138718,
+      "collision_triangles": 9544,
+      "collision_quantized": true
+    }
+  ]
+}
