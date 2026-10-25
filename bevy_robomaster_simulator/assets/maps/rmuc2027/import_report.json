@@ -19,9 +19,74 @@
   ],
   "source_parts": 644,
   "static_parts": 396,
+  "collision_meshes": 398,
+  "tunnel_decks": [
+    {
+      "collision_node": "tunnel_deck_positive_z",
+      "source_part": "p00264",
+      "world_bounds": [
+        [
+          -0.19871768355369568,
+          0.4146221876144409,
+          6.365091800689697
+        ],
+        [
+          0.15128231048583984,
+          0.5102219581604004,
+          7.504557132720947
+        ]
+      ],
+      "removed_shell_world_bounds": [
+        [
+          -0.19871768355369568,
+          0.36017072200775146,
+          6.363521575927734
+        ],
+        [
+          0.15128231048583984,
+          0.5102219581604004,
+          7.504557132720947
+        ]
+      ],
+      "retained_top_triangles": 6,
+      "removed_shell_triangles": 26,
+      "behavior": "One-way upper support; ignore contacts from vehicles below the deck."
+    },
+    {
+      "collision_node": "tunnel_deck_negative_z",
+      "source_part": "p00342",
+      "world_bounds": [
+        [
+          -0.1512679010629654,
+          0.4146221876144409,
+          -7.504557132720947
+        ],
+        [
+          0.19873210787773132,
+          0.5102219581604004,
+          -6.3650922775268555
+        ]
+      ],
+      "removed_shell_world_bounds": [
+        [
+          -0.1512679010629654,
+          0.36017072200775146,
+          -7.504557132720947
+        ],
+        [
+          0.19873210787773132,
+          0.5102219581604004,
+          -6.363522529602051
+        ]
+      ],
+      "retained_top_triangles": 6,
+      "removed_shell_triangles": 26,
+      "behavior": "One-way upper support; ignore contacts from vehicles below the deck."
+    }
+  ],
   "source_triangles": 6055886,
   "render_triangles": 3653196,
-  "collision_triangles": 908327,
+  "collision_triangles": 908275,
   "collision_grid_m": 0.005,
   "maximum_collision_vertex_displacement_m": 0.004330127018922193,
   "interactive_adaptations": {
@@ -406,7 +471,7 @@
       "id": "p00264",
       "source_triangles": 4954,
       "render_triangles": 4954,
-      "collision_triangles": 4954,
+      "collision_triangles": 4928,
       "collision_quantized": false
     },
     {
@@ -952,7 +1017,7 @@
       "id": "p00342",
       "source_triangles": 4950,
       "render_triangles": 4950,
-      "collision_triangles": 4950,
+      "collision_triangles": 4924,
       "collision_quantized": false
     },
     {

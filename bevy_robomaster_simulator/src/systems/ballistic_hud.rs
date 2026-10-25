@@ -14,7 +14,7 @@ use crate::components::{
     InfantryLaunchOffset, MainCamera, SubscribeAutoAim,
 };
 use crate::config::{BallisticHudConfig, SimulationConfig};
-use crate::robomaster::prelude::{RuneHitFeedback, RuneHitOutcome, Team};
+use crate::robomaster::prelude::{RuneHitFeedback, RuneHitOutcome, RuneImpactFeedback, Team};
 
 pub struct BallisticHudPlugin;
 
@@ -89,6 +89,30 @@ enum ScopeDecoration {
 const ETCHED: Color = Color::srgb(0.64, 0.62, 0.54);
 const AMBER: Color = Color::srgb(0.77, 0.66, 0.45);
 const QUIET: Color = Color::srgb(0.42, 0.43, 0.40);
+// Keep a missed or later shot from looking like it received an earlier ring result.
+const RING_FEEDBACK_LIFETIME_SECS: f64 = 5.0;
+
+fn ring_feedback_text(hit: Option<&RuneImpactFeedback>, now: f64) -> String {
+    let Some(hit) = hit else {
+        return "环数 —  /  等待有效靶面命中".to_owned();
+    };
+    let age = (now - hit.recorded_at).max(0.0);
+    if age >= RING_FEEDBACK_LIFETIME_SECS {
+        return "环数 —  /  上次靶面命中已过期\n等待新的有效靶面命中".to_owned();
+    }
+    format!(
+        "上次靶面命中 · {age:.1} 秒前\n{}符第 {} 靶 / {} 环 · {} mm · {}",
+        if hit.team == Team::Red { "红" } else { "蓝" },
+        hit.result.target + 1,
+        hit.result.ring,
+        hit.result.radial_mm,
+        match hit.result.outcome {
+            RuneHitOutcome::WrongTarget => "错靶重置",
+            RuneHitOutcome::Ignored => "当前未亮靶",
+            _ => "有效命中",
+        }
+    )
+}
 
 fn font(handle: &Handle<Font>, size: f32) -> TextFont {
     TextFont {
@@ -522,26 +546,10 @@ fn update_hud(
                 status.1.0
             ),
             HudText::SelectedRange => format!("{range:.1} m"),
-            HudText::Ring => hit_feedback
-                .as_ref()
-                .and_then(|f| f.last.as_ref())
-                .map_or_else(
-                    || "环数 —  /  等待有效靶面命中".to_owned(),
-                    |hit| {
-                        format!(
-                            "{}符 · 第 {} 靶  /  {} 环\n径向 {} mm · {}",
-                            if hit.team == Team::Red { "红" } else { "蓝" },
-                            hit.result.target + 1,
-                            hit.result.ring,
-                            hit.result.radial_mm,
-                            match hit.result.outcome {
-                                RuneHitOutcome::WrongTarget => "错靶重置",
-                                RuneHitOutcome::Ignored => "当前未亮靶",
-                                _ => "有效命中",
-                            }
-                        )
-                    },
-                ),
+            HudText::Ring => ring_feedback_text(
+                hit_feedback.as_ref().and_then(|f| f.last.as_ref()),
+                time.elapsed_secs_f64(),
+            ),
         };
         if text.0 != value {
             text.0 = value;
@@ -552,6 +560,45 @@ fn update_hud(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn ring_feedback_identifies_previous_hit_and_expires_old_ring() {
+        let hit = RuneImpactFeedback {
+            team: Team::Red,
+            result: crate::robomaster::prelude::HitResult {
+                outcome: RuneHitOutcome::PrimaryHit,
+                target: 1,
+                ring: 9,
+                radial_mm: 24,
+            },
+            recorded_at: 10.0,
+        };
+        let recent = ring_feedback_text(Some(&hit), 10.2);
+        assert!(recent.contains("上次靶面命中"));
+        assert!(recent.contains("0.2 秒前"));
+        assert!(recent.contains("9 环"));
+        let expired = ring_feedback_text(Some(&hit), 15.0);
+        assert!(expired.contains("已过期"));
+        assert!(!expired.contains("9 环"));
+        assert!(ring_feedback_text(None, 20.0).contains("等待有效靶面命中"));
+    }
+
+    #[test]
+    fn ring_feedback_keeps_wrong_target_distinct_from_valid_hit() {
+        let hit = RuneImpactFeedback {
+            team: Team::Blue,
+            result: crate::robomaster::prelude::HitResult {
+                outcome: RuneHitOutcome::WrongTarget,
+                target: 3,
+                ring: 10,
+                radial_mm: 0,
+            },
+            recorded_at: 10.0,
+        };
+        let text = ring_feedback_text(Some(&hit), 10.0);
+        assert!(text.contains("错靶重置"));
+        assert!(!text.contains("有效命中"));
+    }
 
     #[test]
     fn controls_adjust_distance_toggle_modes_and_ignore_other_views() {

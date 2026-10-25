@@ -1,5 +1,10 @@
 # Bevy RoboMaster Simulator Configuration
 
+[power_rune]
+# 手动固定大符缩环档：0 未成功（1–10 环）；1 已成功一次（4–10 环）；2 已成功两次（7–10 环）。
+# 练习不同缩环范围时修改为 0/1/2，保存后热生效；仿真成功不会自动累加此值。
+large_success_count = 0
+
 [window]
 # Rendering present mode. Use `auto_no_vsync` to exceed 60Hz for Talos/ROS2 capture.
 # Options: auto_vsync, auto_no_vsync, fifo, fifo_relaxed, mailbox, immediate

@@ -22,6 +22,14 @@ CAD_CENTER_Y = 1.6243434  # 场地平面对称中心，改变世界坐标原点�
 CAD_FLOOR_Z = -1.850872  # CAD 中轴地面基准高程，改变世界高度原点时调整。
 CHUNK_BYTES = 40_000_000  # 每个显示 GLB 的目标分块大小，显存或版本库限制变化时调整。
 COLLISION_GRID = 0.005  # 机械细节碰撞顶点的米制量化间距；0 保留原网格，5 mm 最大位移 4.34 mm。
+TUNNEL_DECK_PARTS = {
+    'p00264': 'tunnel_deck_positive_z',  # 更换 CAD 版本后，核对正 Z 公路隧道所在零件编号。
+    'p00342': 'tunnel_deck_negative_z',  # 更换 CAD 版本后，核对负 Z 公路隧道所在零件编号。
+}
+TUNNEL_DECK_HALF_WIDTH_X = 0.21  # 洞顶结构宽度变化时调整；只选世界 X 在 ±此值内的完整三角面。
+TUNNEL_DECK_ABS_Z_RANGE = (6.35, 7.52)  # 隧道迁移时调整两侧洞顶的世界 |Z| 范围，单位米。
+TUNNEL_DECK_MIN_Y = 0.35  # 洞顶高度变化时调整；保留下方公路和坡道，只拆分此高度以上的洞顶。
+TUNNEL_DECK_UP_NORMAL_MIN_Y = 0.5  # 洞顶可承托坡度变化时调整；朝上表面单独导出供运行期单向承托。
 DART_MARKER_CAD = [13.312952, -5.083, -0.8427]  # 新发射架上的仿真发射点（CAD 米制坐标）；精确炮管标定时调整，来源未提供功能标记。
 # =====================
 
@@ -137,6 +145,36 @@ def clean_faces(v, f):
     return area > 1e-12
 
 
+def split_tunnel_deck(name, v, f):
+    """Remove the tunnel shell; retain its upper surface as a separate one-way deck.
+
+    All bounds refer to complete CAD triangles, never to their centroids, so this cannot
+    accidentally remove a large adjoining road triangle. Runtime contact filtering makes
+    the retained top surface support traffic above without blocking traffic below.
+    """
+    if name not in TUNNEL_DECK_PARTS:
+        return f, None, None
+    triangles = v[f]
+    abs_z = np.abs(triangles[:, :, 2])
+    shell = ((np.abs(triangles[:, :, 0]) <= TUNNEL_DECK_HALF_WIDTH_X).all(axis=1)
+             & (abs_z >= TUNNEL_DECK_ABS_Z_RANGE[0]).all(axis=1)
+             & (abs_z <= TUNNEL_DECK_ABS_Z_RANGE[1]).all(axis=1)
+             & (triangles[:, :, 1] >= TUNNEL_DECK_MIN_Y).all(axis=1))
+    normals = np.cross(triangles[:, 1] - triangles[:, 0], triangles[:, 2] - triangles[:, 0])
+    normals /= np.maximum(np.linalg.norm(normals, axis=1, keepdims=True), 1e-20)
+    upper = shell & (normals[:, 1] >= TUNNEL_DECK_UP_NORMAL_MIN_Y)
+    if not shell.any() or not upper.any():
+        raise ValueError(f'{name}: 未找到预期公路洞顶，请重新核对隧道配置区和 CAD 版本')
+    bounds = lambda points: [points.min(axis=0).tolist(), points.max(axis=0).tolist()]
+    info = dict(collision_node=TUNNEL_DECK_PARTS[name], source_part=name,
+                world_bounds=bounds(triangles[upper].reshape(-1, 3)),
+                removed_shell_world_bounds=bounds(triangles[shell & ~upper].reshape(-1, 3)),
+                retained_top_triangles=int(upper.sum()),
+                removed_shell_triangles=int((shell & ~upper).sum()),
+                behavior='One-way upper support; ignore contacts from vehicles below the deck.')
+    return f[~shell], f[upper], info
+
+
 def source_bounds(parts, ids):
     chosen = [p['bounds_m'] for p in parts if int(p['mesh_id'][1:]) in ids]
     a = cad_to_world(np.array([p['min'] for p in chosen]))
@@ -194,7 +232,7 @@ def main():
     omitted = set(range(5, 167)) | set(range(174, 260))
     render = Glb()
     collision = Glb()
-    files, stats = [], []
+    files, stats, tunnel_decks = [], [], []
     for part in parts:
         key = part['mesh_id']
         number = int(key[1:])
@@ -219,9 +257,15 @@ def main():
             cf = inv[f]
             cf = cf[clean_faces(cv, cf)]
             cf = np.unique(cf, axis=0)
+        cf, deck_faces, deck_info = split_tunnel_deck(key, cv, cf)
         collision.mesh(key, cv, cf)
+        if deck_faces is not None:
+            used, indices = np.unique(deck_faces, return_inverse=True)
+            collision.mesh(deck_info['collision_node'], cv[used], indices.reshape(-1, 3))
+            tunnel_decks.append(deck_info)
         stats.append(dict(id=key, source_triangles=part['triangles'], render_triangles=len(f),
-                          collision_triangles=len(cf), collision_quantized=quantized))
+                          collision_triangles=len(cf) + (len(deck_faces) if deck_faces is not None else 0),
+                          collision_quantized=quantized))
         if len(render.binary) >= CHUNK_BYTES:
             file = f'render_{len(files):02}.glb'
             render.save(OUTPUT / file)
@@ -257,6 +301,7 @@ def main():
                   coordinate_transform=dict(formula='[x, z - CAD_FLOOR_Z, CAD_CENTER_Y - y]',
                                             cad_center_y=CAD_CENTER_Y, cad_floor_z=CAD_FLOOR_Z, units='meter', scale=1),
                   render_files=files, source_parts=len(parts), static_parts=len(stats),
+                  collision_meshes=len(collision.data['meshes']), tunnel_decks=tunnel_decks,
                   source_triangles=sum(p['triangles'] for p in parts),
                   render_triangles=sum(p['render_triangles'] for p in stats),
                   collision_triangles=sum(p['collision_triangles'] for p in stats),

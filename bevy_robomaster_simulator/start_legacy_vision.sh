@@ -92,7 +92,7 @@ cmake -S "$SOURCE_COPY" -B "$BUILD_DIR" -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_PREFIX_PATH="${SIM_ROOT}/.local-deps/root/usr" \
   -DBLAS_LIBRARIES=/usr/lib/x86_64-linux-gnu/libblas.so.3 \
   -DLAPACK_LIBRARIES=/usr/lib/x86_64-linux-gnu/liblapack.so.3
-cmake --build "$BUILD_DIR" --target auto_aim_debug_mpc -j "$JOBS"
+cmake --build "$BUILD_DIR" --target auto_buff_debug_mpc -j "$JOBS"
 c++ -std=c++20 -O3 -march=native -fPIC -shared \
   -I "${SOURCE_COPY}/io/hikrobot/include" \
   "${SCRIPT_DIR}/legacy_vision/camera_shim.cpp" -o "$SHIM"
@@ -102,5 +102,5 @@ mkdir -p "$RUN_DIR"
   --program /usr/bin/python3 --workdir "$RUN_DIR" --clear-args -- \
   "${SCRIPT_DIR}/legacy_vision/bridge.py" \
   --source "$SOURCE_COPY" --runtime "$RUN_DIR" --vision-workdir "$SOURCE_DIR" \
-  --vision "$BUILD_DIR/auto_aim_debug_mpc" --shim "$SHIM" \
+  --vision "$BUILD_DIR/auto_buff_debug_mpc" --shim "$SHIM" \
   --gimbal-height-offset-m "$GIMBAL_HEIGHT_OFFSET_M"

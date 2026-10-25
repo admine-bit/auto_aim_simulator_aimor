@@ -10,6 +10,7 @@ mod setup;
 mod statistic;
 mod systems;
 mod telemetry;
+mod terrain_collision;
 mod util;
 
 #[cfg(feature = "ros2")]
@@ -37,15 +38,15 @@ use crate::robomaster::prelude::RoboMasterPlugins;
 use crate::setup::setup;
 use crate::statistic::ProjectileStatistics;
 use crate::systems::{
-    ChassisObservationFrame, ControllerState, GameplaySystems, PreviousKinematicState,
+    ChassisObservationFrame, ControllerState, GameplaySystems, PreviousKinematicState, VisionMode,
     capture_cursor_on_startup, change_appearance, cleanup_projectiles, clear_controller_input,
     controller_dart_just_pressed, controller_shoot_pressed, cursor_capture_controls, dart_launch,
     following_controls, freecam_controls, gimbal_controls, gimbal_pid_controls,
     projectile_aerodynamics, projectile_launch, remote_gimbal_controls, remote_vehicle_controls,
-    sample_gamepad_controller, sample_keyboard_controller, sample_mouse_controller,
-    screenshot_on_f2, screenshot_saving, select_vision_mode, setup_projectile,
-    switch_slapper_control, uav_launch, update_auto_aim_subscription,
-    update_chassis_observation, update_help_text, vehicle_controls, VisionMode,
+    reset_vehicle_contact_friction, sample_gamepad_controller, sample_keyboard_controller,
+    sample_mouse_controller, screenshot_on_f2, screenshot_saving, select_vision_mode,
+    setup_projectile, switch_slapper_control, uav_launch, update_auto_aim_subscription,
+    update_chassis_observation, update_help_text, vehicle_controls,
 };
 use bevy_metalfx::MetalFxPlugin;
 
@@ -142,7 +143,8 @@ fn main() {
                 ..default()
             })
             .set(render_plugin_for_platform()),
-        PhysicsPlugins::default(),
+        PhysicsPlugins::default()
+            .with_collision_hooks::<terrain_collision::SimulationCollisionHooks>(),
     ));
     app.insert_resource(WinitSettings::continuous());
     app.add_plugins(frame_pacing::FramePacingPlugin);
@@ -204,6 +206,7 @@ fn main() {
                     update_auto_aim_subscription,
                     following_controls,
                     switch_slapper_control,
+                    reset_vehicle_contact_friction,
                     vehicle_controls.run_if(|mode: Res<CameraMode>| mode.0 != FollowingType::Free),
                     remote_vehicle_controls,
                     gimbal_controls,

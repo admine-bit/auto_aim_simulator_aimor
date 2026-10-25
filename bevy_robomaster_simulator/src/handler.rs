@@ -5,6 +5,7 @@ use bevy::{
         observer::On,
         system::{Commands, Query, Res, ResMut},
     },
+    prelude::Time,
     transform::components::Transform,
 };
 
@@ -31,6 +32,7 @@ pub fn on_hit(
     _commands: Commands,
     query: Query<(&Transform, &PowerRune)>,
     mut feedback: ResMut<RuneHitFeedback>,
+    time: Res<Time>,
 ) {
     let Ok((_transform, rune)) = query.get(ev.rune) else {
         return;
@@ -38,6 +40,7 @@ pub fn on_hit(
     feedback.last = Some(RuneImpactFeedback {
         team: rune.team(),
         result: ev.result,
+        recorded_at: time.elapsed_secs_f64(),
     });
     bevy::log::info!(
         "rune impact: team={:?} target={} ring={} radius_mm={} outcome={:?}",

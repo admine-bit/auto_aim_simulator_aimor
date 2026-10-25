@@ -1,4 +1,7 @@
-use crate::robomaster::power_rune::collision::{RuneHitSurface, RuneIndex};
+use crate::components::GameLayer;
+use crate::robomaster::power_rune::collision::{
+    RuneColliderProxy, RuneHitSurface, RuneIndex, RuneSolid,
+};
 use crate::robomaster::power_rune::common::{
     RUNE_TARGET_COUNT, RuneRotationDirection, RuneStartupModes,
 };
@@ -7,9 +10,11 @@ use crate::robomaster::power_rune::rune::{PowerRune, PowerRuneMechanism};
 use crate::robomaster::power_rune::visual::{PowerRuneVisuals, RuneVisual};
 use crate::robomaster::prelude::Team;
 use crate::robomaster::visibility::{Controller, StatefulAppearanceCreator};
-use crate::util::bevy::{drain_entities_by, insert_all_child};
+use crate::util::bevy::drain_entities_by;
 use crate::{material, visibility};
-use avian3d::prelude::CollisionEventsEnabled;
+use avian3d::prelude::{
+    Collider, CollisionEventsEnabled, CollisionMargin, Restitution, RigidBody, TrimeshFlags,
+};
 use bevy::ecs::system::SystemParam;
 use bevy::prelude::{
     Assets, ChildOf, Children, Commands, Component, Entity, In, Mat4, Mesh, Mesh3d, Name, Quat,
@@ -24,6 +29,7 @@ pub struct PowerRuneRoot;
 fn build_targets(
     face_index: usize,
     face_entity: Entity,
+    face_normal: Vec3,
     name_map: &mut HashMap<&str, Entity>,
     param: &mut PowerRuneParam,
     creator: &mut StatefulAppearanceCreator,
@@ -59,27 +65,34 @@ fn build_targets(
         let deactivated = name_map.remove(deactivated);
         let completed = name_map.remove(completed);
 
-        let logical_index = targets.len();
-        for entity in [deactivated, activating, activated, completed]
-            .into_iter()
-            .flatten()
-        {
-            if let Some(center) = target_center_local(entity, param) {
-                param
-                    .commands
-                    .entity(entity)
-                    .insert(RuneHitSurface { center });
-            }
-            insert_all_child(&mut param.commands, entity, &param.children, || {
-                (
-                    RuneIndex {
-                        target: logical_index,
-                        rune: face_entity,
-                    },
-                    CollisionEventsEnabled,
-                )
-            });
-        }
+        // One permanent physical disc per slot. Display variants have different origins,
+        // depths and geometry, and hiding a mesh does not disable its collision.
+        let reference = activated?;
+        let points = target_points(reference, face_entity, param);
+        let center = target_geometry(&points, face_normal)?;
+        param.commands.spawn(RuneSolid).insert((
+            Name::new(format!("{prefix}_HIT_DISC")),
+            Transform::IDENTITY,
+            RuneColliderProxy {
+                source: face_entity,
+                local: Transform::from_translation(center - face_normal * 0.0005)
+                    .with_rotation(Quat::from_rotation_arc(Vec3::Y, face_normal)),
+            },
+            RigidBody::Static,
+            Collider::cylinder(0.150, 0.001),
+            CollisionMargin(0.0),
+            Restitution::ZERO,
+            GameLayer::environment_collision_layers(),
+            CollisionEventsEnabled,
+            RuneIndex {
+                target: targets.len(),
+                rune: face_entity,
+            },
+            RuneHitSurface {
+                center: Vec3::Y * 0.0005,
+                normal: Vec3::Y,
+            },
+        ));
 
         let mut legging_segments: [Controller; 3] = [
             Controller::new_combined(vec![]),
@@ -122,25 +135,20 @@ pub(crate) struct PowerRuneParam<'w, 's> {
     meshes: Res<'w, Assets<Mesh>>,
 }
 
-/// Each glTF target variant has an offset mesh origin. Find the actual disc centre rather
-/// than assuming its entity translation is the centre of the 300 mm detection surface.
-fn target_center_local(root: Entity, param: &PowerRuneParam) -> Option<Vec3> {
-    fn visit(e: Entity, matrix: Mat4, p: &PowerRuneParam, bounds: &mut Option<(Vec3, Vec3)>) {
+/// Mesh vertices expressed in the rotating face's coordinates. Only the circular
+/// reference variant contributes; visible state changes never move the scoring origin.
+fn target_points(root: Entity, face: Entity, param: &PowerRuneParam) -> Vec<Vec3> {
+    fn visit(e: Entity, matrix: Mat4, p: &PowerRuneParam, points: &mut Vec<Vec3>) {
         if let Ok(handle) = p.mesh_handles.get(e) {
             if let Some(mesh) = p.meshes.get(&handle.0) {
-                if let Some(bevy::mesh::VertexAttributeValues::Float32x3(points)) =
+                if let Some(bevy::mesh::VertexAttributeValues::Float32x3(vertices)) =
                     mesh.attribute(Mesh::ATTRIBUTE_POSITION)
                 {
-                    for point in points {
-                        let point = matrix.transform_point3(Vec3::from_array(*point));
-                        match bounds {
-                            Some((lo, hi)) => {
-                                *lo = lo.min(point);
-                                *hi = hi.max(point);
-                            }
-                            None => *bounds = Some((point, point)),
-                        }
-                    }
+                    points.extend(
+                        vertices
+                            .iter()
+                            .map(|v| matrix.transform_point3(Vec3::from_array(*v))),
+                    );
                 }
             }
         }
@@ -151,13 +159,118 @@ fn target_center_local(root: Entity, param: &PowerRuneParam) -> Option<Vec3> {
                     .get(*child)
                     .map(Transform::to_matrix)
                     .unwrap_or(Mat4::IDENTITY);
-                visit(*child, matrix * local, p, bounds);
+                visit(*child, matrix * local, p, points);
             }
         }
     }
-    let mut bounds = None;
-    visit(root, Mat4::IDENTITY, param, &mut bounds);
-    bounds.map(|(lo, hi)| (lo + hi) * 0.5)
+    let mut matrix = Mat4::IDENTITY;
+    let mut current = root;
+    while current != face {
+        let Ok(local) = param.transforms.get(current) else {
+            return vec![];
+        };
+        matrix = local.to_matrix() * matrix;
+        let Ok(parent) = param.child_of.get(current) else {
+            return vec![];
+        };
+        current = parent.parent();
+    }
+    let mut points = vec![];
+    visit(root, matrix, param, &mut points);
+    points
+}
+
+/// Fit the reference disc's outer circle in its plane, rather than using a
+/// polygon's axis-aligned bounds (whose midpoint drifts with vertex sampling).
+/// Returns the front surface centre in the same coordinate system as `points`.
+pub(super) fn target_geometry(points: &[Vec3], normal: Vec3) -> Option<Vec3> {
+    if points.len() < 8 {
+        return None;
+    }
+    let normal = normal.try_normalize()?;
+    let u = normal.any_orthonormal_vector();
+    let v = normal.cross(u);
+    let origin = points.iter().copied().sum::<Vec3>() / points.len() as f32;
+    let projected: Vec<_> = points
+        .iter()
+        .map(|p| {
+            let d = *p - origin;
+            (d.dot(u) as f64, d.dot(v) as f64)
+        })
+        .collect();
+    let mut lo = bevy::math::DVec2::splat(f64::INFINITY);
+    let mut hi = bevy::math::DVec2::splat(f64::NEG_INFINITY);
+    for &(x, y) in &projected {
+        lo = lo.min(bevy::math::DVec2::new(x, y));
+        hi = hi.max(bevy::math::DVec2::new(x, y));
+    }
+    let coarse = (lo + hi) * 0.5;
+    let outer = projected
+        .iter()
+        .map(|&(x, y)| (bevy::math::DVec2::new(x, y) - coarse).length())
+        .fold(0.0_f64, f64::max);
+    let rim: Vec<_> = projected
+        .into_iter()
+        .filter(|&(x, y)| (bevy::math::DVec2::new(x, y) - coarse).length() >= outer - 0.002)
+        .collect();
+    if rim.len() < 8 {
+        return None;
+    }
+    // Least squares: 2*cx*x + 2*cy*y + c = x*x+y*y.
+    let mut a = [[0.0_f64; 4]; 3];
+    for &(x, y) in &rim {
+        let row = [2.0 * x, 2.0 * y, 1.0];
+        for i in 0..3 {
+            for j in 0..3 {
+                a[i][j] += row[i] * row[j];
+            }
+            a[i][3] += row[i] * (x * x + y * y);
+        }
+    }
+    for i in 0..3 {
+        let pivot = (i..3).max_by(|&x, &y| a[x][i].abs().total_cmp(&a[y][i].abs()))?;
+        a.swap(i, pivot);
+        if a[i][i].abs() < 1e-12 {
+            return None;
+        }
+        let divisor = a[i][i];
+        for j in i..4 {
+            a[i][j] /= divisor;
+        }
+        for k in 0..3 {
+            if k == i {
+                continue;
+            }
+            let factor = a[k][i];
+            for j in i..4 {
+                a[k][j] -= factor * a[i][j];
+            }
+        }
+    }
+    let cx = a[0][3];
+    let cy = a[1][3];
+    let radius = (a[2][3] + cx * cx + cy * cy).sqrt();
+    if !radius.is_finite() || (radius - 0.15).abs() > 0.001 {
+        return None;
+    }
+    if rim
+        .iter()
+        .any(|&(x, y)| (((x - cx).powi(2) + (y - cy).powi(2)).sqrt() - radius).abs() > 0.001)
+    {
+        return None;
+    }
+    let front = points
+        .iter()
+        .map(|p| (*p - origin).dot(normal))
+        .fold(f32::NEG_INFINITY, f32::max);
+    Some(origin + u * cx as f32 + v * cy as f32 + normal * front)
+}
+
+/// Include the solid frame, rotating arm skeletons and target rims. Thin glowing
+/// overlays are decoration; they must not obscure or duplicate the scoring disc.
+pub(super) fn structural_rune_node(name: &str) -> bool {
+    name == "BASE"
+        || name.starts_with("FACE_") && (name.contains("_BASE") || name.ends_with("_PADDING"))
 }
 
 pub(crate) fn setup_power_rune(
@@ -177,6 +290,43 @@ pub(crate) fn setup_power_rune(
 
     if name_map.is_empty() {
         return;
+    }
+
+    for (name, &entity) in &name_map {
+        if !structural_rune_node(name) {
+            continue;
+        }
+        for source in std::iter::once(entity).chain(param.children.iter_descendants(entity)) {
+            let Ok(handle) = param.mesh_handles.get(source) else {
+                continue;
+            };
+            let mesh = param
+                .meshes
+                .get(&handle.0)
+                .expect("rune structure mesh must be loaded");
+            let collider = Collider::trimesh_from_mesh_with_config(
+                mesh,
+                TrimeshFlags::FIX_INTERNAL_EDGES
+                    | TrimeshFlags::DELETE_DEGENERATE_TRIANGLES
+                    | TrimeshFlags::DELETE_DUPLICATE_TRIANGLES,
+            )
+            .expect("rune structure mesh must have valid triangle collision geometry");
+            // Physics writes only this independent proxy. It must never write a
+            // visual node's local transform under the rotating glTF face.
+            param.commands.spawn(RuneSolid).insert((
+                Name::new(format!("{name}_PHYSICS")),
+                RigidBody::Static,
+                collider,
+                CollisionMargin(0.0),
+                Restitution::ZERO,
+                GameLayer::environment_collision_layers(),
+                Transform::IDENTITY,
+                RuneColliderProxy {
+                    source,
+                    local: Transform::IDENTITY,
+                },
+            ));
+        }
     }
 
     let mut faces: Vec<(usize, Entity)> = name_map
@@ -242,18 +392,27 @@ pub(crate) fn setup_power_rune(
             }
         }
 
-        let Some(targets) =
-            build_targets(index, face_entity, &mut name_map, &mut param, &mut creator)
-        else {
-            continue;
-        };
-
         let clockwise = param.rotation_direction.for_team(team);
         let initial_rotation = param
             .transforms
             .get(face_entity)
             .map(|t| t.rotation)
             .unwrap_or_default();
+        let rotation = PowerRuneRotation::for_face(clockwise, team, initial_rotation);
+        let face_normal = *rotation.controller().axis();
+        let Some(targets) = build_targets(
+            index,
+            face_entity,
+            face_normal,
+            &mut name_map,
+            &mut param,
+            &mut creator,
+        ) else {
+            panic!(
+                "FACE_{index}: cannot construct five precise rune hit discs from reference geometry"
+            );
+        };
+
         let mut visuals = PowerRuneVisuals::new(
             Controller::new_visibility(deactivated, activated, activated, activated),
             targets,
@@ -264,7 +423,7 @@ pub(crate) fn setup_power_rune(
         param.commands.entity(face_entity).insert((
             PowerRune::new(team, mode),
             mechanism,
-            PowerRuneRotation::for_face(clockwise, team, initial_rotation),
+            rotation,
             visuals,
         ));
     }
@@ -275,6 +434,7 @@ pub(super) struct PowerRuneConstructorPlugin;
 
 impl bevy::app::Plugin for PowerRuneConstructorPlugin {
     fn build(&self, app: &mut bevy::app::App) {
+        super::assembly_audit::install(app);
         app.init_resource::<RuneStartupModes>()
             .init_resource::<RuneRotationDirection>();
         let modes = app.world().resource::<RuneStartupModes>();
@@ -292,3 +452,7 @@ impl bevy::app::Plugin for PowerRuneConstructorPlugin {
         // `setup_power_rune` is invoked by the scene load sequence, not by an event.
     }
 }
+
+#[cfg(test)]
+#[path = "asset_collision_tests.rs"]
+mod asset_collision_tests;

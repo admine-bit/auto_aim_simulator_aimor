@@ -2,7 +2,7 @@ use avian3d::prelude::SubstepCount;
 use bevy::prelude::*;
 use crossbeam_channel::{Receiver, Sender, unbounded};
 use notify::{Event, RecommendedWatcher, RecursiveMode, Watcher};
-use serde::Deserialize;
+use serde::{Deserialize, Deserializer};
 use std::path::{Component, Path};
 
 #[derive(Resource, Deserialize, Reflect, Clone)]
@@ -19,6 +19,8 @@ pub struct SimulationConfig {
     #[serde(default)]
     pub scene: SceneConfig,
     #[serde(default)]
+    pub power_rune: PowerRuneConfig,
+    #[serde(default)]
     pub capture: CapturePipelineConfig,
     #[serde(default)]
     pub livox_ros: LivoxRosConfig,
@@ -30,6 +32,46 @@ pub struct SimulationConfig {
     pub camera: CameraConfig,
     #[serde(default)]
     pub ballistic_hud: BallisticHudConfig,
+}
+
+#[derive(Deserialize, Reflect, Clone, Default)]
+#[serde(default)]
+pub struct PowerRuneConfig {
+    /// 手动固定大符缩环档：0 未成功（1–10 环）、1 已成功一次（4–10 环）、2 已成功两次（7–10 环）。
+    /// 需要练习不同缩环范围时修改；仿真成功不会自动累加，保存配置后热生效。
+    #[serde(deserialize_with = "deserialize_large_success_count")]
+    pub large_success_count: u8,
+}
+
+impl PowerRuneConfig {
+    pub fn minimum_large_ring(&self) -> u8 {
+        match self.large_success_count {
+            0 => 1,
+            1 => 4,
+            _ => 7,
+        }
+    }
+
+    fn log_manual_setting(&self) {
+        info!(
+            "大符手动成功档 large_success_count={}，有效环数={}..10（固定档位，不自动累加）",
+            self.large_success_count,
+            self.minimum_large_ring(),
+        );
+    }
+}
+
+fn deserialize_large_success_count<'de, D>(deserializer: D) -> Result<u8, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let count = u8::deserialize(deserializer)?;
+    if count > 2 {
+        return Err(serde::de::Error::custom(
+            "power_rune.large_success_count must be an integer from 0 to 2",
+        ));
+    }
+    Ok(count)
 }
 
 #[derive(Deserialize, Reflect, Clone)]
@@ -527,6 +569,7 @@ impl Default for SimulationConfig {
                 preview: PreviewConfig::default(),
                 render: RenderConfig::default(),
                 scene: SceneConfig::default(),
+                power_rune: PowerRuneConfig::default(),
                 capture: CapturePipelineConfig::default(),
                 livox_ros: LivoxRosConfig::default(),
                 physics: PhysicsConfig::default(),
@@ -567,6 +610,7 @@ pub struct ConfigPlugin;
 impl Plugin for ConfigPlugin {
     fn build(&self, app: &mut App) {
         let config = SimulationConfig::default();
+        config.power_rune.log_manual_setting();
 
         // Set up file watcher using crossbeam-channel for thread safety
         let (tx, rx): (
@@ -582,8 +626,9 @@ impl Plugin for ConfigPlugin {
 
         match watcher_result {
             Ok(mut watcher) => {
-                if let Err(e) = watcher.watch(Path::new("config.toml"), RecursiveMode::NonRecursive)
-                {
+                // Watch the directory: editors may atomically replace config.toml,
+                // which removes a watcher attached only to the old file's inode.
+                if let Err(e) = watcher.watch(Path::new("."), RecursiveMode::NonRecursive) {
                     warn!("Failed to watch config.toml: {}", e);
                 } else {
                     info!("Config hot-reload enabled for config.toml");
@@ -616,18 +661,34 @@ fn config_hot_reload(
 
     // Non-blocking check for file changes
     while let Ok(Ok(event)) = watcher.receiver.try_recv() {
-        if event.kind.is_modify() {
+        if (event.kind.is_modify() || event.kind.is_create())
+            && event
+                .paths
+                .iter()
+                .any(|path| path.file_name() == Some(std::ffi::OsStr::new("config.toml")))
+        {
             match SimulationConfig::load() {
                 Ok(new_config) => {
                     info!("Config reloaded successfully");
+                    if config.power_rune.large_success_count
+                        != new_config.power_rune.large_success_count
+                    {
+                        new_config.power_rune.log_manual_setting();
+                    }
                     if config.scene != new_config.scene {
                         warn!("Scene model changes take effect after restarting the simulator");
                     }
-                    if let Some(substeps) = substeps.as_deref_mut() {
-                        substeps.0 = new_config.physics.substep_count;
+                    if config.physics.substep_count != new_config.physics.substep_count {
+                        if let Some(substeps) = substeps.as_deref_mut() {
+                            substeps.0 = new_config.physics.substep_count;
+                        }
                     }
-                    if let Some(fixed_time) = fixed_time.as_deref_mut() {
-                        *fixed_time = Time::<Fixed>::from_hz(new_config.physics.fixed_hz.max(1.0));
+                    // Changing only the manual ring range must not reset the fixed clock.
+                    if config.physics.fixed_hz != new_config.physics.fixed_hz {
+                        if let Some(fixed_time) = fixed_time.as_deref_mut() {
+                            *fixed_time =
+                                Time::<Fixed>::from_hz(new_config.physics.fixed_hz.max(1.0));
+                        }
                     }
                     *config = new_config;
                 }
@@ -658,6 +719,42 @@ mod tests {
     #[test]
     fn checked_in_config_parses() {
         SimulationConfig::load().unwrap();
+    }
+
+    #[test]
+    fn power_rune_defaults_to_full_ring_range() {
+        let config: PowerRuneConfig = toml::from_str("").unwrap();
+        assert_eq!(config.large_success_count, 0);
+        assert_eq!(config.minimum_large_ring(), 1);
+        assert_eq!(PowerRuneConfig::default().large_success_count, 0);
+    }
+
+    #[test]
+    fn legacy_config_without_power_rune_section_uses_default() {
+        let mut document: toml::Value = toml::from_str(include_str!("../config.toml")).unwrap();
+        document.as_table_mut().unwrap().remove("power_rune");
+        let config: SimulationConfig = document.try_into().unwrap();
+        assert_eq!(config.power_rune.large_success_count, 0);
+        assert_eq!(config.power_rune.minimum_large_ring(), 1);
+    }
+
+    #[test]
+    fn manual_large_success_count_parses_and_maps_ring_ranges() {
+        for (count, minimum_ring) in [(0, 1), (1, 4), (2, 7)] {
+            let config: PowerRuneConfig =
+                toml::from_str(&format!("large_success_count = {count}")).unwrap();
+            assert_eq!(config.large_success_count, count);
+            assert_eq!(config.minimum_large_ring(), minimum_ring);
+        }
+    }
+
+    #[test]
+    fn manual_large_success_count_rejects_invalid_values() {
+        for value in ["-1", "3", "256", "1.0", "1.5", "\"1\"", "true"] {
+            let result =
+                toml::from_str::<PowerRuneConfig>(&format!("large_success_count = {value}"));
+            assert!(result.is_err(), "accepted invalid success count: {value}");
+        }
     }
 
     #[test]

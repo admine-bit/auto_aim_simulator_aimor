@@ -1,3 +1,4 @@
+mod assembly_audit;
 mod collision;
 mod common;
 pub mod construct;

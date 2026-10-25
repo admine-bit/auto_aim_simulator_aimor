@@ -30,6 +30,17 @@ use crate::setup::{
 };
 use crate::util::async_world::{AsyncWorld, AsyncWorldTask, drive_async_world};
 
+#[cfg(test)]
+mod map_traversal_tests;
+
+/// Weld CAD vertices and suppress contact normals on internal triangle edges.
+/// Keep real walls and openings: `all()` also enables deletion of bad-topology faces.
+fn terrain_trimesh_flags() -> TrimeshFlags {
+    TrimeshFlags::FIX_INTERNAL_EDGES
+        | TrimeshFlags::DELETE_DEGENERATE_TRIANGLES
+        | TrimeshFlags::DELETE_DUPLICATE_TRIANGLES
+}
+
 /// Resolves once Avian has built every collider `setup_collision` queued under `root`.
 ///
 /// `setup_collision` puts a [`ColliderConstructorHierarchy`] on the named descendants of a world as
@@ -139,10 +150,24 @@ async fn load_scene(w: AsyncWorld) {
                 ),
             )
             .await;
+        let expected_decks = report["tunnel_decks"]
+            .as_array()
+            .expect("tunnel decks")
+            .len();
         w.with_world(move |world| {
+            // Avian registers MODIFY_CONTACTS when it creates the collider, so mark the
+            // loaded mesh entities before queuing their collider constructors.
+            let tagged = crate::terrain_collision::tag_tunnel_decks(world, ground);
+            assert_eq!(
+                tagged, expected_decks,
+                "tunnel road meshes must be tagged before collider construction"
+            );
+            info!("RMUC2027: {tagged} tunnel road surfaces support vehicles only from above");
             world.entity_mut(ground).insert(
-                ColliderConstructorHierarchy::new(ColliderConstructor::TrimeshFromMesh)
-                    .with_default_layers(layers),
+                ColliderConstructorHierarchy::new(ColliderConstructor::TrimeshFromMeshWithConfig(
+                    terrain_trimesh_flags(),
+                ))
+                .with_default_layers(layers),
             );
         })
         .await;
@@ -202,8 +227,10 @@ async fn load_scene(w: AsyncWorld) {
         w.with_world(move |world| {
             world.entity_mut(tech_core).insert((
                 RigidBody::Static,
-                ColliderConstructorHierarchy::new(ColliderConstructor::TrimeshFromMesh)
-                    .with_default_layers(layers),
+                ColliderConstructorHierarchy::new(ColliderConstructor::TrimeshFromMeshWithConfig(
+                    terrain_trimesh_flags(),
+                ))
+                .with_default_layers(layers),
             ));
         })
         .await;
@@ -226,22 +253,12 @@ async fn load_scene(w: AsyncWorld) {
             } else {
                 "POWER.glb"
             }),
-            (
-                RigidBody::Static,
-                CollisionMargin(0.001),
-                Restitution::ZERO,
-                PowerRuneRoot,
-            ),
+            (PowerRuneRoot,),
         )
         .await;
     w.run(
         setup_power_rune,
         (power_rune, instance_of(&w, power_rune).await),
-    )
-    .await;
-    w.run(
-        setup_collision,
-        (power_rune, PreciousCollision(power_rune_collision(layers))),
     )
     .await;
     colliders_ready(&w, power_rune).await;
@@ -351,53 +368,6 @@ async fn load_scene(w: AsyncWorld) {
     info!("scene loaded");
 }
 
-/// Every rune target gets a voxelized collider so hits register on the spinning arms.
-fn power_rune_collision(
-    layers: CollisionLayers,
-) -> HashMap<
-    String,
-    (
-        ColliderConstructorHierarchy,
-        CollisionLayers,
-        Visibility,
-        Option<RigidBody>,
-    ),
-> {
-    let voxel = |size| {
-        ColliderConstructorHierarchy::new(ColliderConstructor::VoxelizedTrimeshFromMesh {
-            voxel_size: size,
-            fill_mode: FillMode::FloodFill {
-                detect_cavities: true,
-            },
-        })
-        .with_default_layers(layers)
-    };
-
-    let mut collision = HashMap::from([(
-        "BASE".to_string(),
-        (
-            ColliderConstructorHierarchy::new(ColliderConstructor::TrimeshFromMeshWithConfig(
-                TrimeshFlags::all(),
-            ))
-            .with_default_layers(layers),
-            layers,
-            Visibility::Visible,
-            Some(RigidBody::Static),
-        ),
-    )]);
-    for face in 1..=2 {
-        for target in 1..=5 {
-            for state in ["ACTIVATED", "ACTIVE", "COMPLETED", "DISABLED"] {
-                collision.insert(
-                    format!("FACE_{face}_TARGET_{target}_{state}"),
-                    (voxel(0.015), layers, Visibility::Visible, None),
-                );
-            }
-        }
-    }
-    collision
-}
-
 #[cfg(test)]
 mod map_tests {
     use super::*;
@@ -449,10 +419,13 @@ mod map_tests {
                 )
                 .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, positions)
                 .with_inserted_indices(Indices::U32(indices));
-                colliders.push(Collider::trimesh_from_mesh(&mesh).expect("CAD collider"));
+                colliders.push(
+                    Collider::trimesh_from_mesh_with_config(&mesh, terrain_trimesh_flags())
+                        .expect("CAD collider"),
+                );
             }
         }
-        assert_eq!(colliders.len(), 396);
+        assert_eq!(colliders.len(), 398);
         let hit = |origin: Vec3, direction: Vec3, distance| {
             colliders
                 .iter()
@@ -479,9 +452,11 @@ mod map_tests {
         assert!((b - 0.4833).abs() < 0.001);
         for z in [-7.0, 7.0] {
             assert!(hit(Vec3::new(-1.5, 0.35, z), Vec3::X, 3.0).is_none());
-            assert!(hit(Vec3::new(-1.5, 0.49, z), Vec3::X, 3.0).is_some());
+            // Tunnel fascia/underside has no collision volume. The retained road surface
+            // is made one-way for vehicles by TerrainCollisionHooks at runtime.
+            assert!(hit(Vec3::new(-1.5, 0.49, z), Vec3::X, 3.0).is_none());
             let ceiling = hit(Vec3::new(0.0, 0.35, z), Vec3::Y, 1.0).unwrap();
-            assert!((ceiling - 0.1264).abs() < 0.001);
+            assert!((ceiling - 0.1464).abs() < 0.001);
         }
     }
 }

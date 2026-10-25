@@ -171,6 +171,7 @@ pub fn setup_vehicle(
         CollisionMargin(0.005),
         vehicle_body_collision_layers,
         Mass(15.0),
+        Friction::default(),
         Restitution::new(0.01),
         AngularDamping(50.0),
     ));
@@ -190,12 +191,8 @@ pub fn setup_vehicle(
     if is_local {
         if let Ok(mut transform) = transforms.get_mut(gimbal) {
             let start = &sim_config.scene.player_start;
-            transform.rotation = Quat::from_euler(
-                EulerRot::YXZ,
-                start.gimbal_yaw,
-                start.gimbal_pitch,
-                0.0,
-            );
+            transform.rotation =
+                Quat::from_euler(EulerRot::YXZ, start.gimbal_yaw, start.gimbal_pitch, 0.0);
         }
         let q = query.of(gimbal).flatten();
         commands

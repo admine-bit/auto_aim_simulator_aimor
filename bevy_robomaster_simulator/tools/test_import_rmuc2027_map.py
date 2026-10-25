@@ -21,6 +21,35 @@ def accessor(data, binary, index):
     return np.frombuffer(binary, dtype=dtype, count=a['count'] * width, offset=start).reshape(-1, width)
 
 
+def triangles_by_mesh(path):
+    data, binary = read_glb(path)
+    result = {}
+    for mesh in data['meshes']:
+        primitive = mesh['primitives'][0]
+        vertices = accessor(data, binary, primitive['attributes']['POSITION'])
+        faces = accessor(data, binary, primitive['indices']).reshape(-1, 3)
+        result[mesh['name']] = vertices[faces].astype(np.float64)
+    return result
+
+
+def ray_distance(triangles, origin, direction, maximum):
+    """Independent double-sided ray/triangle check against the actual exported vertices."""
+    edge1, edge2 = triangles[:, 1] - triangles[:, 0], triangles[:, 2] - triangles[:, 0]
+    cross = np.cross(direction, edge2)
+    determinant = np.einsum('ij,ij->i', edge1, cross)
+    valid = np.abs(determinant) > 1e-12
+    inverse = np.zeros_like(determinant)
+    inverse[valid] = 1 / determinant[valid]
+    offset = np.asarray(origin) - triangles[:, 0]
+    u = np.einsum('ij,ij->i', offset, cross) * inverse
+    q = np.cross(offset, edge1)
+    v = (q @ np.asarray(direction)) * inverse
+    distance = np.einsum('ij,ij->i', edge2, q) * inverse
+    hits = distance[valid & (u >= -1e-8) & (v >= -1e-8) & (u + v <= 1 + 1e-8)
+                    & (distance >= 0) & (distance <= maximum)]
+    return float(hits.min()) if len(hits) else None
+
+
 class ImportedMapTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -61,6 +90,7 @@ class ImportedMapTest(unittest.TestCase):
 
     def test_collision_buffers_survive_gltf_loading(self):
         data, binary = read_glb(MAP / 'collision.glb')
+        self.assertEqual(len(data['meshes']), self.report['collision_meshes'])
         count = 0
         for mesh in data['meshes']:
             p = mesh['primitives'][0]
@@ -77,6 +107,51 @@ class ImportedMapTest(unittest.TestCase):
             self.assertTrue((np.linalg.norm(np.cross(t[:, 1]-t[:, 0], t[:, 2]-t[:, 0]), axis=1) > 1e-12).all())
             count += len(f)
         self.assertEqual(count, self.report['collision_triangles'])
+
+    def test_tunnel_shell_is_open_and_upper_road_geometry_is_retained(self):
+        collision = triangles_by_mesh(MAP / 'collision.glb')
+        decks = self.report['tunnel_decks']
+        self.assertEqual({deck['collision_node'] for deck in decks},
+                         {'tunnel_deck_positive_z', 'tunnel_deck_negative_z'})
+        source = {}
+        for file in self.report['render_files']:
+            source.update({key: value for key, value in triangles_by_mesh(MAP / file).items()
+                           if key in {'p00264', 'p00342'}})
+        # Include nearby parts too, so the opening cannot be accidentally blocked by another mesh.
+        nearby = []
+        for triangles in collision.values():
+            selected = ((triangles[:, :, 0].max(axis=1) >= -1.0)
+                        & (triangles[:, :, 0].min(axis=1) <= 1.0)
+                        & (np.abs(triangles[:, :, 2]).max(axis=1) >= 6.7))
+            nearby.append(triangles[selected])
+        nearby = np.concatenate(nearby)
+        for deck in decks:
+            upper = collision[deck['collision_node']]
+            self.assertEqual(len(upper), 6)
+            self.assertEqual(deck['removed_shell_triangles'], 26)
+            points = upper.reshape(-1, 3)
+            np.testing.assert_allclose([points.min(axis=0), points.max(axis=0)], deck['world_bounds'])
+            normals = np.cross(upper[:, 1] - upper[:, 0], upper[:, 2] - upper[:, 0])
+            normals /= np.linalg.norm(normals, axis=1, keepdims=True)
+            self.assertTrue((normals[:, 1] > 0.8).all())
+            sign = 1 if deck['collision_node'].endswith('positive_z') else -1
+            original = source[deck['source_part']]
+            for absolute_z in [6.8, 7.0, 7.2]:
+                z = sign * absolute_z
+                old_top = ray_distance(original, [0, 1, z], [0, -1, 0], 1)
+                new_top = ray_distance(nearby, [0, 1, z], [0, -1, 0], 1)
+                self.assertIsNotNone(old_top)
+                self.assertAlmostEqual(new_top, old_top, places=7)
+                # This horizontal line used to hit the solid roof's vertical end faces.
+                # It now passes through both mouths; one-way contact behavior is tested in Rust.
+                height = 1 - old_top - 0.01
+                for x, direction in [(-1, [1, 0, 0]), (1, [-1, 0, 0])]:
+                    self.assertIsNotNone(ray_distance(original, [x, height, z], direction, 2))
+                    self.assertIsNone(ray_distance(nearby, [x, height, z], direction, 2))
+                old_road = ray_distance(original, [0, 0.35, z], [0, -1, 0], 0.35)
+                new_road = ray_distance(nearby, [0, 0.35, z], [0, -1, 0], 0.35)
+                self.assertIsNotNone(old_road)
+                self.assertAlmostEqual(new_road, old_road, places=7)
 
     def test_rune_geometry_is_unchanged_and_not_scaled(self):
         _, original = read_glb(ROOT / 'assets/POWER.glb')

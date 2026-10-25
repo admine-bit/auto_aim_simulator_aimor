@@ -11,6 +11,13 @@ use avian3d::prelude::*;
 const CHASSIS_ROTATION_STOP_EPSILON: f32 = 1e-3;
 const CHASSIS_TILT_LIMIT: f32 = 20.0 * std::f32::consts::PI / 180.0;
 
+/// Inactive cars also regain their holding friction after camera/control selection changes.
+pub fn reset_vehicle_contact_friction(mut vehicles: Query<&mut Friction, With<VehicleDynamic>>) {
+    for mut friction in &mut vehicles {
+        *friction = Friction::default();
+    }
+}
+
 fn update_chassis_rotation(
     chassis_transform: &mut Transform,
     chassis_data: &mut InfantryChassis,
@@ -57,7 +64,10 @@ pub fn vehicle_controls(
     time: Res<Time>,
     controller: Res<ControllerState>,
     config: Res<SimulationConfig>,
-    infantry: Single<(Forces, &Mass, &mut VehicleDynamic), (With<Infantry>, With<Controlled>)>,
+    infantry: Single<
+        (Forces, &Mass, &mut Friction, &mut VehicleDynamic),
+        (With<Infantry>, With<Controlled>),
+    >,
     gimbal: Single<
         (&GlobalTransform, &InfantryGimbal),
         (With<Controlled>, Without<InfantryChassis>),
@@ -76,11 +86,12 @@ pub fn vehicle_controls(
     let input = controller.movement;
     let boost = controller.boost_multiplier();
 
-    let (mut forces, &Mass(mass), mut dynamic) = infantry.into_inner();
+    let (mut forces, &Mass(mass), mut friction, mut dynamic) = infantry.into_inner();
 
     let dt = time.delta_secs();
     dynamic.linear(
         &mut forces,
+        &mut friction,
         mass,
         gimbal.into_inner().0,
         input,
@@ -107,7 +118,13 @@ pub fn remote_vehicle_controls(
     controller: Res<ControllerState>,
     config: Res<SimulationConfig>,
     infantry: Single<
-        (&GlobalTransform, Forces, &Mass, &mut VehicleDynamic),
+        (
+            &GlobalTransform,
+            Forces,
+            &Mass,
+            &mut Friction,
+            &mut VehicleDynamic,
+        ),
         (With<ActiveSlapper>, With<Infantry>, Without<Controlled>),
     >,
     chassis: Single<
@@ -124,11 +141,13 @@ pub fn remote_vehicle_controls(
     let input = controller.movement;
     let boost = controller.boost_multiplier();
 
-    let (infantry_global_transform, mut forces, &Mass(mass), mut dynamic) = infantry.into_inner();
+    let (infantry_global_transform, mut forces, &Mass(mass), mut friction, mut dynamic) =
+        infantry.into_inner();
 
     let dt = time.delta_secs();
     dynamic.linear(
         &mut forces,
+        &mut friction,
         mass,
         infantry_global_transform,
         input,
@@ -253,6 +272,33 @@ pub fn switch_slapper_control(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn cars_without_an_active_driver_regain_holding_friction() {
+        let mut app = App::new();
+        app.add_systems(Update, reset_vehicle_contact_friction);
+        let rolling = Friction::new(0.2).with_combine_rule(CoefficientCombine::Min);
+        let local = app
+            .world_mut()
+            .spawn((VehicleDynamic::default(), rolling, Controlled))
+            .id();
+        // This vehicle no longer has ActiveSlapper after switching to another robot.
+        let previous_remote = app
+            .world_mut()
+            .spawn((VehicleDynamic::default(), rolling))
+            .id();
+        let terrain = app.world_mut().spawn(rolling).id();
+
+        // The reset runs even when vehicle_controls is skipped for the free camera.
+        app.update();
+        for vehicle in [local, previous_remote] {
+            assert_eq!(
+                *app.world().get::<Friction>(vehicle).unwrap(),
+                Friction::default()
+            );
+        }
+        assert_eq!(*app.world().get::<Friction>(terrain).unwrap(), rolling);
+    }
 
     #[test]
     fn chassis_rotation_smoothly_ramps_towards_target_speed() {

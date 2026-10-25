@@ -83,7 +83,12 @@ pub fn projectile_launch(
     let vel = infantry.1.0 + direction * config.projectile.speed;
     commands.spawn((
         RigidBody::Dynamic,
-        Collider::sphere(config.projectile.diameter / 2.0),
+        (
+            Collider::sphere(config.projectile.diameter / 2.0),
+            SweptCcd::default(),
+            // Keep complex frame triangles from producing distant speculative ghost hits.
+            SpeculativeMargin(0.001),
+        ),
         Mass(config.projectile.mass),
         Friction::new(config.projectile.friction),
         Restitution::new(0.3),
