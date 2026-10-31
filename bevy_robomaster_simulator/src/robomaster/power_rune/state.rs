@@ -142,8 +142,7 @@ impl MechanismState {
             Self::Activating(run) => {
                 run.global_remaining -= dt;
                 if run.global_remaining <= EPS {
-                    // Five primary hits already complete the large rune; the
-                    // optional final secondary window cannot turn that into a timeout.
+                    // Missing the optional final secondary cannot cancel five completed groups.
                     if mode == RuneMode::Large && run.completed_groups == RUNE_TARGET_COUNT {
                         *self = Self::Activated {
                             mode,
@@ -240,7 +239,6 @@ impl MechanismState {
                     .position(|a| *a == Activation::Activating)
                     .expect("large round has two targets");
                 run.completed_groups += 1;
-                // Keep the optional final second unless the global deadline settles it first.
                 run.phase = Phase::Secondary {
                     remaining: LARGE_SECONDARY_TIMEOUT,
                     target: other,
@@ -249,6 +247,16 @@ impl MechanismState {
             }
             (RuneMode::Large, Phase::Secondary { target, .. }) => {
                 debug_assert_eq!(*target, index);
+                // Both final targets have now been hit: display success at this
+                // impact instead of waiting for the secondary or global deadline.
+                if run.completed_groups == RUNE_TARGET_COUNT {
+                    *self = Self::Activated {
+                        mode: RuneMode::Large,
+                        remaining: ACTIVATED_HOLD,
+                        hits: run.hits,
+                    };
+                    return RuneHitOutcome::Activated;
+                }
                 RuneHitOutcome::SecondaryHit
             }
         }
@@ -334,7 +342,7 @@ mod tests {
     }
     fn fifth_group_before_primary(
         at: f32,
-        hit_earlier_secondaries: bool,
+        earlier_secondary_hits: usize,
         rng: &mut impl Rng,
     ) -> MechanismState {
         let mut s = MechanismState::start(RuneMode::Large, rng);
@@ -348,11 +356,11 @@ mod tests {
             assert_eq!(s.hit(wrong, rng), RuneHitOutcome::WrongTarget);
             assert_eq!(s.tick(FAILURE_RECOVER, rng), RuneTransition::Started);
         }
-        for _ in 0..4 {
+        for group in 0..4 {
             s.tick(2.2, rng);
             let targets = active(&s);
             assert_eq!(s.hit(targets[0], rng), RuneHitOutcome::PrimaryHit);
-            if hit_earlier_secondaries {
+            if group < earlier_secondary_hits {
                 assert_eq!(s.hit(targets[1], rng), RuneHitOutcome::SecondaryHit);
             }
             assert_eq!(
@@ -367,46 +375,106 @@ mod tests {
         s
     }
     #[test]
-    fn large_final_group_settles_at_secondary_or_global_deadline() {
-        let mut rng = rand::rng();
-        let mut failures = Vec::new();
+    fn large_final_secondary_immediately_completes_before_the_global_deadline() {
+        use rand::{SeedableRng, rngs::StdRng};
+        let mut rng = StdRng::seed_from_u64(20261028);
         for at in [18.9, 19.0, 19.19, 19.999] {
-            for hit_earlier_secondaries in [false, true] {
-                for hit_secondary in [false, true] {
-                    let mut s = fifth_group_before_primary(at, hit_earlier_secondaries, &mut rng);
+            for earlier_secondary_hits in 0..=4 {
+                for final_target in 0..2 {
+                    let mut s =
+                        fifth_group_before_primary(at - 0.05, earlier_secondary_hits, &mut rng);
                     let targets = active(&s);
-                    assert_eq!(s.hit(targets[0], &mut rng), RuneHitOutcome::PrimaryHit);
-                    if hit_secondary {
-                        assert_eq!(s.hit(targets[1], &mut rng), RuneHitOutcome::SecondaryHit);
-                    }
-                    assert!(s.is_activating_large());
-                    let settle_after = LARGE_SECONDARY_TIMEOUT.min(global_remaining(&s));
                     assert_eq!(
-                        s.tick(settle_after - 0.0002, &mut rng),
-                        RuneTransition::None
+                        s.hit(targets[final_target], &mut rng),
+                        RuneHitOutcome::PrimaryHit
                     );
                     assert!(s.is_activating_large());
-                    let transition = s.tick(0.0002, &mut rng);
-                    let expected_hits =
-                        if hit_earlier_secondaries { 9 } else { 5 } + u8::from(hit_secondary);
-                    if transition != RuneTransition::Activated
-                        || !matches!(s, MechanismState::Activated { hits, .. } if hits == expected_hits)
-                        || s.target_states() != [Activation::Completed; RUNE_TARGET_COUNT]
-                    {
-                        failures.push(format!(
-                            "fifth primary at {at}s, earlier secondaries={hit_earlier_secondaries}, \
-                             final secondary={hit_secondary}: {transition:?}, {s:?}"
-                        ));
-                    }
+                    assert_ne!(
+                        s.target_states(),
+                        [Activation::Completed; RUNE_TARGET_COUNT]
+                    );
+                    assert_eq!(s.tick(0.05, &mut rng), RuneTransition::None);
+                    assert_eq!(
+                        s.hit(targets[1 - final_target], &mut rng),
+                        RuneHitOutcome::Activated,
+                        "fifth secondary at {at}s, earlier secondaries={earlier_secondary_hits}, target={final_target}"
+                    );
+                    let expected_hits = 6 + earlier_secondary_hits as u8;
+                    // The second hit displays success without another tick or blackout.
+                    assert!(
+                        matches!(s, MechanismState::Activated { mode: RuneMode::Large, remaining, hits }
+                        if remaining == ACTIVATED_HOLD && hits == expected_hits)
+                    );
+                    assert_eq!(
+                        s.target_states(),
+                        [Activation::Completed; RUNE_TARGET_COUNT]
+                    );
+                    assert_eq!(
+                        s.hit(targets[1 - final_target], &mut rng),
+                        RuneHitOutcome::Ignored
+                    );
+                    assert_eq!(s.tick(0.2, &mut rng), RuneTransition::None);
+                    assert_eq!(
+                        s.target_states(),
+                        [Activation::Completed; RUNE_TARGET_COUNT]
+                    );
                 }
             }
         }
-        assert!(failures.is_empty(), "{}", failures.join("\n"));
+    }
+    #[test]
+    fn large_final_secondary_completes_at_any_point_in_its_window() {
+        let mut rng = rand::rng();
+        for delay in [0.0, 0.199, 0.201, 0.999] {
+            let mut s = fifth_group_before_primary(18.5, 4, &mut rng);
+            let targets = active(&s);
+            assert_eq!(s.hit(targets[0], &mut rng), RuneHitOutcome::PrimaryHit);
+            assert!(s.is_activating_large());
+            assert_eq!(s.tick(delay, &mut rng), RuneTransition::None);
+            assert_eq!(s.hit(targets[1], &mut rng), RuneHitOutcome::Activated);
+            assert!(
+                matches!(s, MechanismState::Activated { hits: 10, remaining, .. } if remaining == ACTIVATED_HOLD)
+            );
+            assert_eq!(
+                s.target_states(),
+                [Activation::Completed; RUNE_TARGET_COUNT]
+            );
+        }
+    }
+    #[test]
+    fn large_final_primary_alone_settles_at_secondary_or_global_deadline() {
+        let mut rng = rand::rng();
+        for at in [18.9, 19.0, 19.19, 19.999] {
+            for earlier_secondary_hits in 0..=4 {
+                let mut s = fifth_group_before_primary(at, earlier_secondary_hits, &mut rng);
+                let target = active(&s)[0];
+                assert_eq!(s.hit(target, &mut rng), RuneHitOutcome::PrimaryHit);
+                assert!(s.is_activating_large());
+                let settle_after = LARGE_SECONDARY_TIMEOUT.min(global_remaining(&s));
+                assert_eq!(
+                    s.tick(settle_after - 0.0002, &mut rng),
+                    RuneTransition::None
+                );
+                assert!(s.is_activating_large());
+                assert_eq!(s.tick(0.0002, &mut rng), RuneTransition::Activated);
+                let expected_hits = 5 + earlier_secondary_hits as u8;
+                assert!(
+                    matches!(s, MechanismState::Activated { hits, remaining, .. }
+                    if hits == expected_hits && (remaining - ACTIVATED_HOLD).abs() < EPS)
+                );
+                assert_eq!(
+                    s.target_states(),
+                    [Activation::Completed; RUNE_TARGET_COUNT]
+                );
+                assert_eq!(s.hit(target, &mut rng), RuneHitOutcome::Ignored);
+                assert_eq!(s.tick(0.2, &mut rng), RuneTransition::None);
+            }
+        }
     }
     #[test]
     fn large_retries_and_four_groups_do_not_extend_twenty_second_deadline() {
         let mut rng = rand::rng();
-        let mut s = fifth_group_before_primary(19.999, false, &mut rng);
+        let mut s = fifth_group_before_primary(19.999, 0, &mut rng);
         assert_eq!(s.large_progress(), Some(4));
         assert!((global_remaining(&s) - 0.001).abs() < EPS);
         let remaining = global_remaining(&s);
@@ -420,18 +488,47 @@ mod tests {
         );
     }
     #[test]
+    fn large_fifth_group_still_requires_a_lit_target_before_the_deadline() {
+        let mut rng = rand::rng();
+        let mut s = fifth_group_before_primary(19.999, 4, &mut rng);
+        let wrong = (0..RUNE_TARGET_COUNT)
+            .find(|i| !active(&s).contains(i))
+            .unwrap();
+        assert_eq!(s.hit(wrong, &mut rng), RuneHitOutcome::WrongTarget);
+        assert!(matches!(s, MechanismState::Failed { .. }));
+        assert_eq!(
+            s.target_states(),
+            [Activation::Deactivated; RUNE_TARGET_COUNT]
+        );
+
+        let mut s = fifth_group_before_primary(19.999, 0, &mut rng);
+        let target = active(&s)[0];
+        let remaining = global_remaining(&s);
+        assert_eq!(s.tick(remaining, &mut rng), RuneTransition::ResetToInactive);
+        assert_eq!(s.hit(target, &mut rng), RuneHitOutcome::Ignored);
+        assert!(matches!(s, MechanismState::Inactive { .. }));
+
+        let mut s = fifth_group_before_primary(19.5, 4, &mut rng);
+        let targets = active(&s);
+        assert_eq!(s.hit(targets[0], &mut rng), RuneHitOutcome::PrimaryHit);
+        let wrong = (0..RUNE_TARGET_COUNT)
+            .find(|i| !targets.contains(i))
+            .unwrap();
+        assert_eq!(s.hit(wrong, &mut rng), RuneHitOutcome::WrongTarget);
+        assert!(matches!(s, MechanismState::Failed { .. }));
+    }
+    #[test]
     fn large_late_success_is_reported_once_and_displayed_for_six_seconds() {
         let mut rng = rand::rng();
-        let mut s = fifth_group_before_primary(19.999, false, &mut rng);
-        let target = active(&s)[0];
-        assert_eq!(s.hit(target, &mut rng), RuneHitOutcome::PrimaryHit);
-        let remaining = global_remaining(&s);
-        let mut transitions = vec![s.tick(remaining, &mut rng)];
-        assert_eq!(transitions[0], RuneTransition::Activated);
+        let mut s = fifth_group_before_primary(19.999, 0, &mut rng);
+        let targets = active(&s);
+        assert_eq!(s.hit(targets[0], &mut rng), RuneHitOutcome::PrimaryHit);
+        assert_eq!(s.hit(targets[1], &mut rng), RuneHitOutcome::Activated);
+        let mut transitions = Vec::new();
         assert!(
             matches!(s, MechanismState::Activated { remaining, .. } if remaining == ACTIVATED_HOLD)
         );
-        assert_eq!(s.hit(target, &mut rng), RuneHitOutcome::Ignored);
+        assert_eq!(s.hit(targets[1], &mut rng), RuneHitOutcome::Ignored);
         for _ in 0..5 {
             transitions.push(s.tick(1.0, &mut rng));
             assert!(matches!(s, MechanismState::Activated { .. }));
@@ -448,7 +545,7 @@ mod tests {
                 .iter()
                 .filter(|t| **t == RuneTransition::Activated)
                 .count(),
-            1
+            0
         );
     }
     #[test]
@@ -527,10 +624,10 @@ mod tests {
         }
     }
     #[test]
-    fn large_final_group_preserves_secondary_window_and_counts_ten_hits() {
+    fn large_first_four_groups_preserve_secondary_windows_and_blackouts() {
         let mut rng = rand::rng();
         let mut s = MechanismState::start(RuneMode::Large, &mut rng);
-        for group in 0..5 {
+        for group in 0..4 {
             let a = active(&s);
             assert_eq!(a.len(), 2);
             assert_eq!(s.hit(a[0], &mut rng), RuneHitOutcome::PrimaryHit);
@@ -540,16 +637,26 @@ mod tests {
             s.tick(0.99, &mut rng);
             assert!(s.is_activating_large());
             let transition = s.tick(0.01, &mut rng);
-            if group < 4 {
-                assert_eq!(transition, RuneTransition::Advanced);
-                assert!(active(&s).is_empty());
-                s.tick(ROUND_BLACKOUT, &mut rng);
-                assert_eq!(s.large_progress(), Some(group + 1));
-            } else {
-                assert_eq!(transition, RuneTransition::Activated);
-            }
+            assert_eq!(transition, RuneTransition::Advanced);
+            assert!(active(&s).is_empty());
+            assert_eq!(s.hit(a[0], &mut rng), RuneHitOutcome::Ignored);
+            assert_eq!(
+                s.tick(ROUND_BLACKOUT - 0.001, &mut rng),
+                RuneTransition::None
+            );
+            assert!(active(&s).is_empty());
+            assert_eq!(s.tick(0.001, &mut rng), RuneTransition::Advanced);
+            assert_eq!(s.large_progress(), Some(group + 1));
         }
+        let targets = active(&s);
+        assert_eq!(s.hit(targets[0], &mut rng), RuneHitOutcome::PrimaryHit);
+        assert!(s.is_activating_large());
+        assert_eq!(s.hit(targets[1], &mut rng), RuneHitOutcome::Activated);
         assert!(matches!(s, MechanismState::Activated { hits: 10, .. }));
+        assert_eq!(
+            s.target_states(),
+            [Activation::Completed; RUNE_TARGET_COUNT]
+        );
     }
     #[test]
     fn missing_secondary_is_allowed_for_all_five_groups() {
@@ -557,10 +664,14 @@ mod tests {
         let mut s = MechanismState::start(RuneMode::Large, &mut rng);
         for group in 0..5 {
             let i = active(&s)[0];
-            s.hit(i, &mut rng);
-            s.tick(1.0, &mut rng);
             if group < 4 {
+                assert_eq!(s.hit(i, &mut rng), RuneHitOutcome::PrimaryHit);
+                assert_eq!(s.tick(1.0, &mut rng), RuneTransition::Advanced);
                 s.tick(ROUND_BLACKOUT, &mut rng);
+            } else {
+                assert_eq!(s.hit(i, &mut rng), RuneHitOutcome::PrimaryHit);
+                assert!(s.is_activating_large());
+                assert_eq!(s.tick(1.0, &mut rng), RuneTransition::Activated);
             }
         }
         assert!(matches!(s, MechanismState::Activated { hits: 5, .. }));

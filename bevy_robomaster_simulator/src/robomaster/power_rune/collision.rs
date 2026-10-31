@@ -634,6 +634,13 @@ mod tests {
     struct HitLog(Vec<HitResult>);
 
     fn test_app() -> App {
+        let mut app = unfinished_test_app();
+        app.finish();
+        app.cleanup();
+        app
+    }
+
+    fn unfinished_test_app() -> App {
         let mut app = App::new();
         app.add_plugins((
             MinimalPlugins,
@@ -651,8 +658,6 @@ mod tests {
         ))
         .init_resource::<HitLog>()
         .add_observer(|event: On<RuneHit>, mut log: ResMut<HitLog>| log.0.push(event.result));
-        app.finish();
-        app.cleanup();
         app
     }
 
@@ -755,6 +760,208 @@ mod tests {
             }
         }
         panic!("the round did not reach a physical rune disc");
+    }
+
+    #[test]
+    fn fifth_large_secondary_collision_lights_all_blades_in_the_same_frame_and_activates_once() {
+        use super::super::rune::{PowerRune, PowerRuneUpdatePlugin};
+        use super::super::state::MechanismState;
+        use super::super::visual::{PowerRuneVisuals, RuneVisual};
+        use crate::robomaster::visibility::{Controller, StatefulAppearancePlugin};
+
+        #[derive(Resource, Default)]
+        struct ActivationLog(Vec<(Entity, f64)>);
+
+        fn lamp(app: &mut App) -> (Controller, [Entity; 4]) {
+            let states = std::array::from_fn(|_| app.world_mut().spawn(Visibility::Hidden).id());
+            (
+                Controller::new_visibility(
+                    Some(states[0]),
+                    Some(states[1]),
+                    Some(states[2]),
+                    Some(states[3]),
+                ),
+                states,
+            )
+        }
+
+        fn assert_completed_lamps(app: &App, lamps: &[[Entity; 4]]) {
+            for states in lamps {
+                for (index, entity) in states.iter().enumerate() {
+                    assert_eq!(
+                        app.world().get::<Visibility>(*entity),
+                        Some(if index == Activation::Completed as usize {
+                            &Visibility::Visible
+                        } else {
+                            &Visibility::Hidden
+                        }),
+                        "all five blades and their light segments must show Completed immediately"
+                    );
+                }
+            }
+        }
+
+        // Each of the first four groups may score its optional secondary. None
+        // of those combinations may defer success past the fifth secondary impact.
+        for secondary_hits in 0..=4 {
+            let mut app = unfinished_test_app();
+            app.add_plugins((StatefulAppearancePlugin, PowerRuneUpdatePlugin))
+                .init_asset::<StandardMaterial>()
+                .init_resource::<ActivationLog>()
+                .add_observer(
+                    |event: On<RuneActivated>,
+                     time: Res<Time<Physics>>,
+                     mut log: ResMut<ActivationLog>| {
+                        log.0.push((event.rune, time.elapsed_secs_f64()));
+                    },
+                );
+            app.finish();
+            app.cleanup();
+            let rune = mechanism(&mut app, RuneMode::Large, Team::Red);
+            let (root, root_states) = lamp(&mut app);
+            let mut lamps = Vec::new();
+            let targets = std::array::from_fn(|_| {
+                let mut controller = || {
+                    let (controller, states) = lamp(&mut app);
+                    lamps.push(states);
+                    controller
+                };
+                RuneVisual::new(
+                    controller(),
+                    std::array::from_fn(|_| controller()),
+                    controller(),
+                    controller(),
+                )
+            });
+            app.world_mut().entity_mut(rune).insert((
+                PowerRune::new(Team::Red, RuneMode::Large),
+                PowerRuneVisuals::new(root, targets),
+            ));
+            let first_target = active_targets(&app, rune)[0];
+            let plate = disc(&mut app, rune, first_target, Vec3::Y);
+            // The scoring fixture stays in world space while the real update
+            // plugin still runs the mechanism, display and rotation systems.
+            app.world_mut().entity_mut(plate).remove::<ChildOf>();
+            advance(&mut app, 2);
+
+            for group in 0..5 {
+                let active = active_targets(&app, rune);
+                assert_eq!(
+                    active.len(),
+                    2,
+                    "group={group} secondary_hits={secondary_hits}"
+                );
+                app.world_mut().get_mut::<RuneIndex>(plate).unwrap().target = active[0];
+                let projectile = shot(&mut app, Vec3::Y, 0.0, 25.0, 0.0, 0.017, false);
+                let primary_impact_time = wait_for_round_consumption(&mut app, projectile);
+                app.world_mut().despawn(projectile);
+
+                if group == 4 {
+                    let hits = &app.world().resource::<HitLog>().0;
+                    assert_eq!(hits.len(), 5 + secondary_hits);
+                    assert_eq!(hits.last().unwrap().outcome, RuneHitOutcome::PrimaryHit);
+                    assert!(app.world().resource::<ActivationLog>().0.is_empty());
+                    let mechanism = app.world().get::<PowerRuneMechanism>(rune).unwrap();
+                    assert!(mechanism.state().is_activating());
+                    assert_eq!(active_targets(&app, rune), [active[1]]);
+                    assert_ne!(
+                        mechanism.state().target_states(),
+                        [Activation::Completed; 5],
+                        "the fifth primary keeps its optional secondary window open"
+                    );
+                    for states in &lamps {
+                        assert_eq!(
+                            app.world()
+                                .get::<Visibility>(states[Activation::Completed as usize]),
+                            Some(&Visibility::Hidden),
+                            "the fifth primary alone must not show Completed"
+                        );
+                    }
+
+                    advance(&mut app, 8);
+                    app.world_mut().get_mut::<RuneIndex>(plate).unwrap().target = active[1];
+                    let secondary = shot(&mut app, Vec3::Y, 0.0, 25.0, 0.0, 0.017, false);
+                    let impact_time = wait_for_round_consumption(&mut app, secondary);
+                    app.world_mut().despawn(secondary);
+                    assert!(impact_time - primary_impact_time < 1.0);
+                    let hits = &app.world().resource::<HitLog>().0;
+                    assert_eq!(hits.len(), 6 + secondary_hits);
+                    assert_eq!(hits.last().unwrap().outcome, RuneHitOutcome::Activated);
+                    assert_eq!(
+                        app.world().resource::<ActivationLog>().0,
+                        [(rune, impact_time)],
+                        "success must be delivered in the same physical step as the fifth secondary"
+                    );
+                    assert!(
+                        impact_time < 10.0,
+                        "the global 20 s deadline is not involved"
+                    );
+                    let mechanism = app.world().get::<PowerRuneMechanism>(rune).unwrap();
+                    assert!(matches!(
+                        mechanism.state(),
+                        MechanismState::Activated { hits, remaining, .. }
+                            if *hits == (6 + secondary_hits) as u8 && *remaining > 5.98
+                    ));
+                    assert_eq!(
+                        mechanism.state().target_states(),
+                        [Activation::Completed; 5]
+                    );
+                    assert_completed_lamps(&app, &lamps);
+                    assert_eq!(
+                        app.world()
+                            .get::<Visibility>(root_states[Activation::Activated as usize]),
+                        Some(&Visibility::Visible),
+                        "the fixed centre R marker stays illuminated"
+                    );
+
+                    // A later arrival on a completed final target cannot add
+                    // score, restart the six-second display or emit success again.
+                    advance(&mut app, 8);
+                    app.world_mut().get_mut::<RuneIndex>(plate).unwrap().target = active[1];
+                    let late = shot(&mut app, Vec3::Y, 0.0, 25.0, 0.0, 0.017, false);
+                    wait_for_round_consumption(&mut app, late);
+                    app.world_mut().despawn(late);
+                    assert_eq!(
+                        app.world().resource::<HitLog>().0.last().unwrap().outcome,
+                        RuneHitOutcome::Ignored
+                    );
+                    advance(&mut app, 150);
+                    assert_eq!(app.world().resource::<ActivationLog>().0.len(), 1);
+                    assert_completed_lamps(&app, &lamps);
+                    break;
+                }
+
+                assert_eq!(
+                    app.world().resource::<HitLog>().0.last().unwrap().outcome,
+                    RuneHitOutcome::PrimaryHit
+                );
+                if group < secondary_hits {
+                    app.world_mut().get_mut::<RuneIndex>(plate).unwrap().target = active[1];
+                    let secondary = shot(&mut app, Vec3::Y, 0.0, 25.0, 0.0, 0.017, false);
+                    wait_for_round_consumption(&mut app, secondary);
+                    app.world_mut().despawn(secondary);
+                    assert_eq!(
+                        app.world().resource::<HitLog>().0.last().unwrap().outcome,
+                        RuneHitOutcome::SecondaryHit
+                    );
+                }
+                let mut blackout_seen = false;
+                for _ in 0..160 {
+                    let mechanism = app.world().get::<PowerRuneMechanism>(rune).unwrap();
+                    blackout_seen |=
+                        mechanism.state().target_states() == [Activation::Deactivated; 5];
+                    assert!(app.world().resource::<ActivationLog>().0.is_empty());
+                    if active_targets(&app, rune).len() == 2 {
+                        break;
+                    }
+                    app.update();
+                }
+                assert!(
+                    blackout_seen,
+                    "ordinary group changes retain their 200 ms blackout"
+                );
+            }
+        }
     }
 
     #[test]
